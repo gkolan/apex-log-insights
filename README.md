@@ -1,25 +1,38 @@
 # Apex Log Insights
 
-**A free, offline toolkit that turns raw Apex debug logs into actionable insights. No servers, no uploads, no accounts — just answers.**
+A TypeScript monorepo that parses Salesforce Apex debug logs into structured, analyzable data. Ships as an npm library, CLI, MCP server, and browser extensions (Chrome, Edge, Firefox).
 
-Parse any Apex debug log and explore execution timelines, SOQL/DML analysis, governor limit burn rates, diagnostics, and full evidence linking.
+Everything runs locally — your log data never leaves your machine.
 
-> **Privacy:** The CLI, browser extensions, and viewer process everything locally — your log data never leaves your machine. The MCP server also parses locally, but passes structured results to your AI client (Claude, Cursor, etc.), which may transmit data to cloud APIs. Use the `redact: true` option on any MCP tool to mask Salesforce IDs, emails, and other sensitive values before they reach the AI. See [MCP Privacy](#mcp-privacy) for details.
+[Changelog](CHANGELOG.md) · [Releases](https://github.com/gkolan/apex-log-insights/releases) · [Report a bug](https://github.com/gkolan/apex-log-insights/issues)
 
-**[Chrome Extension](https://chromewebstore.google.com/detail/apex-log-insights)** · **[npm](https://www.npmjs.com/package/@apex-log-insights/cli)** · [Changelog](CHANGELOG.md) · [Releases](https://github.com/gkolan/apex-log-insights/releases) · [Report a bug](https://github.com/gkolan/apex-log-insights/issues)
+---
+
+## What It Does
+
+Takes a raw Apex debug log and produces a structured report covering:
+
+- 20-phase DML lifecycle mapping (Load Original Record → Post-Commit Logic) with governor limit burn rates per phase
+- SOQL analysis — query text, rows, duration, bind variables, explain plans, N+1 loop detection
+- DML analysis — operation type, sObject, row count, log line reference
+- Callout and Named Credential tracking — HTTP method, URL, status, duration
+- CPU attribution by class and namespace, heap timeline, governor limit trajectory
+- Trigger cascade detection, recursive trigger warnings, mixed DML detection
+- Execution context identification (trigger, batch, future, queueable, scheduled, platform event, anonymous)
+- Evidence linking — every finding traces back to the exact raw log line
+
+The core parser has zero runtime dependencies.
 
 ---
 
 ## Packages
 
-This is a TypeScript monorepo with four packages sharing a single parsing engine:
-
 | Package | Description | Install |
 |---------|-------------|---------|
-| [`@apex-log-insights/core`](packages/core) | Shared parsing engine — zero runtime dependencies | `pnpm add @apex-log-insights/core` |
-| [`@apex-log-insights/cli`](packages/cli) | Command-line interface for log analysis | `npm i -g @apex-log-insights/cli` |
+| [`@apex-log-insights/core`](packages/core) | Shared parsing engine | `pnpm add @apex-log-insights/core` |
+| [`@apex-log-insights/cli`](packages/cli) | CLI — serves a local viewer in the browser | `pnpm add -g @apex-log-insights/cli` |
 | [`@apex-log-insights/mcp`](packages/mcp) | MCP server for Claude, Cursor, and AI tools | `npx @apex-log-insights/mcp` |
-| [`@apex-log-insights/browser-ext`](packages/browser-ext) | Browser extension (Chrome, Edge, Firefox) | [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights) |
+| [`@apex-log-insights/browser-ext`](packages/browser-ext) | Browser extension (Chrome, Edge, Firefox) | See below |
 
 ---
 
@@ -28,14 +41,15 @@ This is a TypeScript monorepo with four packages sharing a single parsing engine
 ### CLI
 
 ```bash
-# Install globally
-npm install -g @apex-log-insights/cli
+pnpm add -g @apex-log-insights/cli
 
-# Or run without installing
-npx @apex-log-insights/cli debug.log
+apex-log debug.log          # opens the viewer in your browser
+apex-log ./logs/            # folder mode — sortable file listing
 ```
 
-### MCP Server (for AI tools)
+Parsing happens client-side in a Web Worker. Nothing is written to disk.
+
+### MCP Server
 
 Add to your Claude Desktop or Claude Code config:
 
@@ -50,19 +64,13 @@ Add to your Claude Desktop or Claude Code config:
 }
 ```
 
-### MCP Privacy
+Exposes 5 tools: `parse_apex_log`, `analyze_performance`, `analyze_soql`, `analyze_governor_limits`, `summarize_log`. The server runs locally and makes zero network requests. Structured results are passed to your AI client via stdio — if it uses a cloud API, that data leaves your machine through the AI's pipeline.
 
-The MCP server runs locally and makes zero network requests itself. However, the structured analysis it returns (SOQL queries, class names, namespace info, governor limits) is sent to your AI client via stdio. If your AI client connects to a cloud service, that data will leave your machine through the AI's own pipeline.
+Every tool accepts an optional `redact: true` parameter that masks Salesforce IDs, emails, phone numbers, and debug message content before results reach the AI.
 
-To protect sensitive data, every MCP tool accepts an optional `redact` parameter:
+### Browser Extension
 
-```json
-{ "logText": "...", "redact": true }
-```
-
-When enabled, Salesforce IDs, email addresses, phone numbers, and debug message content are replaced with `[REDACTED-ID]`, `[REDACTED-EMAIL]`, etc. Structural metadata (class names, field names, sObject types, governor limits, durations) is preserved so the AI can still provide meaningful analysis.
-
-**Rule of thumb:** If your AI tool uses a cloud API, set `redact: true`. If it runs entirely on-device (local LLM), redaction is optional.
+Works on Chrome, Edge, and Firefox (all Manifest V3). Drag a `.log` file onto the extension or load a pre-generated `.apex-insights.json` report. The content script auto-detects debug logs open in browser tabs and offers to redirect them to the analyzer. Store listings are pending — you can load the unpacked extension from `packages/browser-ext/dist/` in the meantime.
 
 ### As a Library
 
@@ -83,67 +91,55 @@ const report = buildInsightsReport({
 
 ## Development
 
-Requires **Node.js 18+** and **pnpm**. If you don't have pnpm:
-
-```bash
-npm install -g pnpm          # or: corepack enable && corepack prepare pnpm@9.15.4 --activate
-```
-
-Then:
+Requires **Node.js 18+** and **pnpm**.
 
 ```bash
 git clone https://github.com/gkolan/apex-log-insights.git
 cd apex-log-insights
 pnpm install
-pnpm build          # Sync versions → build all → export extension
-pnpm test           # Run all tests
-pnpm audit          # Security scan → audit/*.md
-pnpm bugs           # Bug scan → bugs/*.md
-pnpm dev:cli        # Watch mode for CLI development
-pnpm dev:ext        # Watch mode for browser extension
+pnpm build          # sync versions → build all → export extension
+pnpm test           # run all tests
+pnpm dev:cli        # watch mode for CLI
+pnpm dev:ext        # watch mode for browser extension
 ```
-
-To build a browser extension with a new version in one step:
 
 ```bash
-pnpm --filter @apex-log-insights/browser-ext build:chrome -- --version 1.2.0
+pnpm audit          # security scan → audit/*.md
+pnpm bugs           # bug scan → bugs/*.md
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, release process, and architecture guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, architecture guide, and release process.
 
 ### Project Structure
 
 ```
-apex-log-insights/
-├── packages/
-│   ├── core/           # Shared parsing engine
-│   ├── cli/            # CLI distribution
-│   ├── mcp/            # MCP server distribution
-│   └── browser-ext/    # Browser extension (Chrome/Edge/Firefox)
-├── fixtures/           # Shared test log files
-├── docs/               # Project website (GitHub Pages)
-├── .github/workflows/  # CI/CD pipelines
-└── scripts/            # Build & release utilities
+packages/core/         → shared parsing engine (zero runtime deps)
+packages/cli/          → CLI distribution
+packages/mcp/          → MCP server
+packages/browser-ext/  → browser extension
+viewer/                → offline HTML viewer (vanilla JS, no build step)
+fixtures/              → shared test log files
+scripts/               → build & release utilities
 ```
 
 ### Dependency Graph
 
 ```
-              @apex-log-insights/core
-              (zero runtime dependencies)
-                        │
-           ┌────────────┼────────────┐
-           │            │            │
-       @cli         @mcp      @browser-ext
-    (commander)   (@mcp/sdk)    (vite, esbuild)
+            @apex-log-insights/core
+            (zero runtime dependencies)
+                      │
+         ┌────────────┼────────────┐
+         │            │            │
+     @cli          @mcp      @browser-ext
+  (commander)   (@mcp/sdk)   (vite, esbuild)
 ```
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide — architecture, bug-fix workflows, build targets, version bumping, and release process.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT - see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
