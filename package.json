@@ -1,0 +1,80 @@
+{
+  "name": "apex-log-insights",
+  "version": "1.1.22",
+  "private": true,
+  "description": "A free, offline toolkit that turns raw Apex debug logs into actionable insights.",
+  "author": "Gautam Kolan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkolan/apex-log-insights.git"
+  },
+  "homepage": "https://github.com/gkolan/apex-log-insights",
+  "bugs": {
+    "url": "https://github.com/gkolan/apex-log-insights/issues"
+  },
+  "keywords": [
+    "salesforce",
+    "apex",
+    "debug-log",
+    "log-analyzer",
+    "mcp",
+    "chrome-extension",
+    "firefox-extension",
+    "edge-extension",
+    "soql",
+    "dml",
+    "governor-limits",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "prepare": "husky || true",
+    "dev:cli": "pnpm --filter @apex-log-insights/cli dev",
+    "dev:mcp": "pnpm --filter @apex-log-insights/mcp dev",
+    "dev:ext": "pnpm --filter @apex-log-insights/browser-ext dev",
+    "lint": "eslint packages/*/src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "pnpm -r exec rm -rf dist",
+    "prebuild": "node scripts/sync-versions.mjs",
+    "build": "pnpm -r build && pnpm run export:extension",
+    "export:extension": "tsx scripts/export-extension.ts",
+    "export:extension:ui": "tsx scripts/assemble-extension-ui.ts",
+    "version:bump": "node scripts/sync-versions.mjs",
+    "audit": "tsx scripts/run-audit.ts",
+    "bugs": "tsx scripts/run-bugs.ts",
+    "release": "pnpm build && pnpm -r publish"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "knip": "^6.3.0",
+    "lint-staged": "^15.0.0",
+    "madge": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "~5.8",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.9"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

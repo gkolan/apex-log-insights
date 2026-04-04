@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apex Log Insights Setup</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="welcomeGateBody">
+    <main class="welcomeGateMain">
+      <section class="welcomeGateCard" aria-label="Apex Log Insights setup">
+        <aside class="welcomeGateLeft">
+          <div class="welcomeGateBrand">
+            <img class="welcomeGateLogo" src="./icons/icon-active.svg" alt="" width="34" height="34" aria-hidden="true" />
+            <div class="welcomeGateBrandName">Apex Log Insights</div>
+          </div>
+
+          <div class="welcomeGateSummary welcomeGateSummary--plain">
+            <div class="welcomeGateSummaryTitle">What you get</div>
+            <div class="welcomeGateSummaryDesc">Triage Summary, Execution Story, Data &amp; Limits, Diagnostics, and <span class="noWrap">Log Explorer</span>.</div>
+          </div>
+
+        </aside>
+
+        <section class="welcomeGateRight">
+          <div>
+            <div class="welcomeGateTopRow">
+              <span id="onboardingBadge" class="welcomeGateEyebrow">Verification required</span>
+              <div class="theme-toggle" role="group" aria-label="Theme toggle">
+                <button id="themeLightBtn" class="theme-toggle-btn" type="button" aria-pressed="false" aria-label="Light mode">
+                  <span class="theme-toggle-icon">☀</span>
+                </button>
+                <button id="themeDarkBtn" class="theme-toggle-btn" type="button" aria-pressed="false" aria-label="Dark mode">
+                  <span class="theme-toggle-icon">◐</span>
+                </button>
+              </div>
+            </div>
+
+            <header class="welcomeGateHeader">
+              <h1>Allow access to local debug logs</h1>
+              <p>Complete this step, then open a Salesforce <code>.log</code> file in Chrome to<br />analyze it. Logs are processed locally on your machine.</p>
+            </header>
+
+            <div class="welcomeGateSteps" aria-label="Setup steps">
+              <article class="welcomeGateStep">
+                <span class="welcomeGateStepNum">1</span>
+                <div class="welcomeGateStepBody">
+                  <h2>Open extension settings</h2>
+                  <button id="openSettingsBtn" type="button" class="welcomeGatePrimaryBtn">
+                    Open Extension Settings
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  </button>
+                </div>
+              </article>
+
+              <article class="welcomeGateStep">
+                <span class="welcomeGateStepNum">2</span>
+                <div class="welcomeGateStepBody">
+                  <h2>Enable "Allow access to file URLs"</h2>
+                  <div class="welcomeGateMockUi" aria-hidden="true">
+                    <span>Allow access to file URLs</span>
+                    <span id="mockToggle" class="welcomeGateToggle"><span class="welcomeGateToggleKnob"></span></span>
+                  </div>
+                  <p id="statusText" class="welcomeGateStatus">Checking permission...</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+        </section>
+      </section>
+    </main>
+
+    <script src="./welcome.js"></script>
+  </body>
+</html>

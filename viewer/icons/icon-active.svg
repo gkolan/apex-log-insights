@@ -1,0 +1,11 @@
+<svg viewBox="0 0 24 24" width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+    <!-- Rounded Square Body (White with Thinner Blue Stroke - Consistent 1.5) -->
+    <rect x="2" y="2" width="20" height="20" rx="3" fill="#ffffff" stroke="#0066ff" stroke-width="1.5" />
+    <!-- Colored Internal Lines (Consistent 1.8) -->
+    <!-- Red (Error - Top) -->
+    <line x1="6" y1="8" x2="18" y2="8" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" />
+    <!-- Blue (Project - Middle) -->
+    <line x1="6" y1="12" x2="18" y2="12" stroke="#0066ff" stroke-width="1.8" stroke-linecap="round" />
+    <!-- Yellow (Highlight - Bottom) -->
+    <line x1="6" y1="16" x2="18" y2="16" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" />
+</svg>

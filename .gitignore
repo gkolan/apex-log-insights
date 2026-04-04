@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Package manager
+pnpm-debug.log*
+npm-debug.log*
+
+# Generated extension assets (built by assemble-extension-ui.ts)
+packages/browser-ext/shared/app.js
+packages/browser-ext/shared/styles.css
+
+# Generated worker (build artifact)
+viewer/apex-parser-worker.js
+
+# Extension zip bundles
+packages/browser-ext/dist/*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+
+# Test coverage
+coverage/
+
+# Misc
+*.log

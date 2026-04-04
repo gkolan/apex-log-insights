@@ -1,0 +1,23 @@
+{
+  "limits": {
+    "soql": 5,
+    "dml": 5,
+    "errors": 3,
+    "warnings": 3
+  },
+  "labels": {
+    "soqlTopTemplate": "{count} Longest-Running Queries",
+    "soqlExpandedSubheading": "Chronological order (as executed)",
+    "dmlSubheading": "Total records inserted, updated, deleted, or upserted",
+    "issueTopTemplate": "Showing first {count} encountered",
+    "issueExpandedSubheading": "Showing all"
+  },
+  "buttons": {
+    "showMoreTemplate": "{count} total →",
+    "showFewer": "Show fewer"
+  },
+  "mock": {
+    "enableIssueMocks": false,
+    "issueMockCount": 10
+  }
+}
