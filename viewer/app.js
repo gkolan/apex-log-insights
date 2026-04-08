@@ -3,7 +3,7 @@ import { copyText } from "./modules/shared-dom.js";
 import { rawLogLineFromEvidence, evidenceButton } from "./modules/shared-evidence.js";
 import { escapeHtml } from "./modules/shared-format.js";
 
-const APP_VERSION = "1.1.22";
+const APP_VERSION = "1.1.23";
 const DEFAULT_UI_CONFIG = {
   limits: {
     soql: 5,

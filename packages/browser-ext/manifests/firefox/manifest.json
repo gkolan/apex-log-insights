@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Apex Log Insights",
-  "version": "1.1.22",
+  "version": "1.1.23",
   "description": "Free offline toolkit for Apex debug logs — execution timeline, governor limits, SOQL analysis, and guided triage.",
   "permissions": [
     "tabs",

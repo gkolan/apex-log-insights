@@ -1,4 +1,5 @@
 const THEME_STORAGE_KEY = "apex-log-insights-theme";
+const isFirefox = /Firefox/.test(navigator.userAgent);
 
 const openSettingsBtn = document.getElementById("openSettingsBtn");
 const onboardingBadge = document.getElementById("onboardingBadge");
@@ -80,6 +81,15 @@ async function initializeTheme() {
 }
 
 async function openExtensionSettings() {
+  if (isFirefox) {
+    try {
+      await chrome.tabs.create({ url: "about:addons" });
+    } catch {
+      // about:addons blocked — guide user manually
+      window.alert("Open about:addons in your address bar, then click Apex Log Insights to manage permissions.");
+    }
+    return;
+  }
   try {
     await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
   } catch {
@@ -111,6 +121,18 @@ function applyPermissionState(allowed) {
 }
 
 async function refreshStatus() {
+  if (isFirefox) {
+    // Firefox grants file:// access via install permissions — no separate toggle needed.
+    applyPermissionState(true);
+    if (onboardingBadge) onboardingBadge.textContent = "Setup complete";
+    const header = document.querySelector(".welcomeGateHeader");
+    if (header) {
+      header.querySelector("h1").textContent = "You\u2019re all set!";
+      header.querySelector("p").innerHTML =
+        'Open a Salesforce <code>.log</code> file in your browser to analyze it.<br />Logs are processed locally on your machine.';
+    }
+    return true;
+  }
   const allowed = await getFileSchemeAccessAllowed();
   applyPermissionState(allowed);
   return allowed;

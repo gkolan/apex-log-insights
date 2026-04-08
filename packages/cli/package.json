@@ -1,6 +1,6 @@
 {
   "name": "@apex-log-insights/cli",
-  "version": "1.1.21",
+  "version": "1.1.23",
   "description": "CLI for viewing Salesforce Apex debug logs in the browser.",
   "author": "Gautam Kolan",
   "license": "MIT",

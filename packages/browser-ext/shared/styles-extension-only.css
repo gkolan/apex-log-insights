@@ -408,6 +408,10 @@ body.welcome-permission-enabled .welcomeGateEyebrow {
   color: var(--ok-text);
 }
 
+body.welcome-permission-enabled .welcomeGateSteps {
+  display: none;
+}
+
 @media (max-width: 860px) {
   .welcomeGateCard {
     grid-template-columns: 1fr;

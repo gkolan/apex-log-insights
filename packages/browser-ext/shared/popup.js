@@ -1,6 +1,7 @@
 const STORAGE_KEY = "apex-redaction-settings";
 const LOG_EXPLORER_SETTINGS_KEY = "apex-log-explorer-settings";
 const THEME_STORAGE_KEY = "apex-log-insights-theme";
+const isFirefox = /Firefox/.test(navigator.userAgent);
 const RAW_CONTEXT_OPTIONS = [0, 2, 5, 10, 25, 50, 100];
 
 const DEFAULT_REDACTION_SETTINGS = {
@@ -137,7 +138,8 @@ function setFileAccessStatus(allowed) {
 
 async function maybeShowFileAccessBanner() {
   if (!fileAccessBanner) return;
-  const allowed = await getFileSchemeAccessAllowed();
+  // Firefox grants file:// access via install permissions — no separate toggle needed.
+  const allowed = isFirefox ? true : await getFileSchemeAccessAllowed();
   setFileAccessStatus(allowed);
   if (fileAccessBannerDismissed && allowed) {
     // access was granted after dismissal — show preferences now
@@ -168,6 +170,17 @@ if (openWelcomeBtn) {
 
 if (openFileAccessSettingsBtn) {
   openFileAccessSettingsBtn.addEventListener("click", async () => {
+    if (isFirefox) {
+      try {
+        await chrome.tabs.create({ url: "about:addons" });
+      } catch {
+        // about:addons blocked — guide user manually
+        window.alert("Open about:addons in your address bar, then click Apex Log Insights to manage permissions.");
+        return;
+      }
+      window.close();
+      return;
+    }
     const id = chrome.runtime.id;
     // Chrome MV3 allows extensions to open chrome://extensions and the ?id= detail view.
     // Try the specific detail page first, fall back to the main extensions page.
