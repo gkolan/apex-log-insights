@@ -1,0 +1,34 @@
+{
+  "name": "@apex-log-insights/browser-ext",
+  "version": "1.1.33",
+  "description": "Browser extension for analyzing Salesforce Apex debug logs — Chrome, Edge, and Firefox.",
+  "author": "Gautam Kolan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkolan/apex-log-insights.git",
+    "directory": "packages/browser-ext"
+  },
+  "homepage": "https://github.com/gkolan/apex-log-insights/tree/main/packages/browser-ext#readme",
+  "bugs": {
+    "url": "https://github.com/gkolan/apex-log-insights/issues"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm build:worker && cp dist/content/apex-parser-worker.js shared/content/apex-parser-worker.js && tsx ../../scripts/assemble-extension-ui.ts",
+    "build:worker": "esbuild src/worker-entry.ts --bundle --format=esm --outfile=dist/content/apex-parser-worker.js --alias:node:perf_hooks=./src/perf-shim.ts --alias:perf_hooks=./src/perf-shim.ts",
+    "build:chrome": "bash scripts/build-chrome.sh",
+    "build:edge": "bash scripts/build-edge.sh",
+    "build:firefox": "bash scripts/build-firefox.sh",
+    "dev": "esbuild src/worker-entry.ts --bundle --format=esm --outfile=dist/content/apex-parser-worker.js --alias:node:perf_hooks=./src/perf-shim.ts --alias:perf_hooks=./src/perf-shim.ts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apex-log-insights/core": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3"
+  }
+}

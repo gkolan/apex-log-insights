@@ -1,0 +1,35 @@
+{
+  "name": "@apex-log-insights/cli",
+  "version": "1.1.33",
+  "description": "CLI for viewing Salesforce Apex debug logs in the browser.",
+  "author": "Gautam Kolan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkolan/apex-log-insights.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/gkolan/apex-log-insights/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/gkolan/apex-log-insights/issues"
+  },
+  "type": "module",
+  "bin": {
+    "apex-log": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "esbuild src/bin.ts --bundle --format=esm --platform=node --outfile=dist/bin.js --packages=external --banner:js=\"#!/usr/bin/env node\"",
+    "build:worker": "esbuild src/worker-entry.ts --bundle --format=esm --outfile=../../viewer/apex-parser-worker.js --alias:node:perf_hooks=./src/perf-shim.ts --alias:perf_hooks=./src/perf-shim.ts --alias:@apex-log-insights/core=../core/dist/index.js",
+    "build:all": "npm run build && npm run build:worker",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@apex-log-insights/core": "workspace:*",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.7.3"
+  }
+}

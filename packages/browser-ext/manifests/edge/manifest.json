@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Apex Log Insights",
+  "version": "1.1.34",
+  "description": "Free offline toolkit for Apex debug logs — execution timeline, governor limits, SOQL analysis, and guided triage.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*/*.log",
+    "file:///*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-idle-16.png",
+      "48": "icons/icon-idle-48.png",
+      "128": "icons/icon-idle-128.png"
+    },
+    "default_title": "Open Apex Log Insights"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon-active-16.png",
+    "48": "icons/icon-active-48.png",
+    "128": "icons/icon-active-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*.log",
+        "file:///*"
+      ],
+      "js": [
+        "content/content-launcher.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/apex-parser-worker.js",
+        "styles.css",
+        "icons/icon-active.svg",
+        "icons/icon-idle.svg",
+        "icons/icon-disabled.svg",
+        "app.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

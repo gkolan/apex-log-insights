@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["ES2022", "WebWorker"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "node:perf_hooks": ["./src/perf-shim.ts"],
+      "@apex-log-insights/core": ["../core/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

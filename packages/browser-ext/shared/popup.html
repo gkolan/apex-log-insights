@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apex Log Insights</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="popupBody">
+    <div class="popupShell">
+
+      <!-- ── Hero ───────────────────────────────────────────── -->
+      <header class="popupHero">
+        <div class="popupBrand">
+          <img src="./icons/icon-active.svg" alt="" width="28" height="28" />
+          <div class="popupBrandText">
+            <h1>Apex Log Insights</h1>
+            <span id="fileAccessStatusBadge" class="popupStatusBadge">Checking access</span>
+          </div>
+        </div>
+        <p class="popupTagline">Turn raw debug logs into actionable insights — offline, private, and free.</p>
+      </header>
+
+      <!-- ── File access banner (conditional) ───────────────── -->
+      <section id="fileAccessBanner" class="popupBanner popupBanner--warn" hidden>
+        <h2>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2-1 4-3 5.99-5.11a2 2 0 0 1 2.72 0C17.7 2.1 19 4 21 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          Enable file URL access
+        </h2>
+        <p>Required to parse local <code>.log</code> files opened as <code>file://</code>.</p>
+        <ol>
+          <li>Open extension details</li>
+          <li>Turn on <code>Allow access to file URLs</code></li>
+          <li>Reload your local log tab</li>
+        </ol>
+        <div class="popupBannerActions">
+          <button id="openFileAccessSettingsBtn" class="popupPrimaryBtn" type="button">Open Extension Settings</button>
+          <button id="dismissFileAccessBannerBtn" class="popupGhostBtn" type="button">Dismiss</button>
+        </div>
+      </section>
+
+      <!-- ── Settings ───────────────────────────────────────── -->
+      <section id="preferencesPanel" class="popupSection">
+        <h2 class="popupSectionTitle">Preferences</h2>
+
+        <div class="popupGroup">
+          <h3 class="popupGroupLabel">Log Explorer</h3>
+          <label class="popupSettingRow">
+            <span>Open links in new tab</span>
+            <input type="checkbox" id="openLinksInNewTab" />
+          </label>
+          <label class="popupSettingRow">
+            <span>Lines &#177; default</span>
+            <select id="defaultContextRows">
+              <option value="0" selected>0</option>
+              <option value="2">2</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="sidebarGroup" class="popupGroup" hidden>
+          <h3 class="popupGroupLabel">File Sidebar</h3>
+          <label class="popupSettingRow">
+            <span>Show sibling log files</span>
+            <input type="checkbox" id="sidebarEnabled" />
+          </label>
+          <p class="popupSettingHint">When enabled, a sidebar lists other <code>.log</code> files in the same folder. A temporary tab opens briefly to scan the directory.</p>
+        </div>
+
+        <div class="popupGroup">
+          <h3 class="popupGroupLabel">PHI / PII Redaction</h3>
+          <label class="redactRow">
+            <input type="checkbox" id="redactEnabled" />
+            <span>Enable redaction on copy</span>
+          </label>
+          <div id="redactOptions" class="redactOptions" hidden>
+            <label class="redactRow"><input type="checkbox" id="redactEmail" /> Emails &rarr; [EMAIL]</label>
+            <label class="redactRow"><input type="checkbox" id="redactSfId" /> Salesforce IDs &rarr; [SF-ID]</label>
+            <label class="redactRow"><input type="checkbox" id="redactPhone" /> Phone numbers &rarr; [PHONE]</label>
+            <label class="redactRow"><input type="checkbox" id="redactNames" /> Person names &rarr; masked</label>
+            <p class="redactNameLabel">Names to redact (one per line):</p>
+            <textarea id="redactNameList" rows="3" placeholder="John Smith&#10;Jane Doe"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Theme ──────────────────────────────────────────── -->
+      <section class="popupSection popupSection--flush">
+        <h2 class="popupSectionTitle">Theme</h2>
+        <div class="popupThemeRow">
+          <button id="themeSystemBtn" class="popupThemeBtn" type="button" title="Follow system preference">System</button>
+          <button id="themeLightBtn" class="popupThemeBtn" type="button" title="Light mode">Light</button>
+          <button id="themeDarkBtn" class="popupThemeBtn" type="button" title="Dark mode">Dark</button>
+        </div>
+      </section>
+
+      <!-- ── Footer ─────────────────────────────────────────── -->
+      <footer class="popupFooter">
+        <a id="openWelcomeBtn" class="popupFooterLink" href="#">Setup Guide</a>
+        <span class="popupFooterDot">&middot;</span>
+        <span class="popupVersion">v1.1.34</span>
+      </footer>
+
+    </div>
+    <script src="./popup.js"></script>
+  </body>
+</html>
