@@ -167,10 +167,29 @@ async function main(): Promise<void> {
     execFileSync('bash', [script], { cwd: extPkg, stdio: 'inherit' });
   }
 
+  // ─── 5. Copy release artifacts to docs/ ───────────────────────────────────
+
+  const docsReleases = resolve(root, 'docs/releases');
+  const artifactMap: Record<string, { src: string; dest: string }> = {
+    chrome:  { src: `chrome-extension-v${newVersion}.zip`, dest: 'chrome' },
+    edge:    { src: `edge-extension-v${newVersion}.zip`,   dest: 'edge' },
+    firefox: { src: `firefox-extension-v${newVersion}.xpi`, dest: 'firefox' },
+  };
+
+  for (const [browser, { src, dest }] of Object.entries(artifactMap)) {
+    const srcPath = resolve(extPkg, 'dist', src);
+    const destDir = resolve(docsReleases, dest);
+    if (!existsSync(srcPath)) continue;
+    execSync(`mkdir -p "${destDir}"`);
+    execSync(`cp "${srcPath}" "${destDir}/"`);
+    console.log(`  [release] ${src} → docs/releases/${dest}/`);
+  }
+
   // ─── Done ─────────────────────────────────────────────────────────────────
 
   console.log(`\n[export] Done. ${oldVersion} → ${newVersion}`);
   console.log(`  Extensions: packages/browser-ext/dist/{chrome-extension-v${newVersion}.zip, edge-extension-v${newVersion}.zip, firefox-extension-v${newVersion}.xpi}`);
+  console.log(`  Releases:   docs/releases/{chrome,edge,firefox}/`);
   console.log(`  CLI worker:  viewer/apex-parser-worker.js`);
 }
 

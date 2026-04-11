@@ -213,25 +213,43 @@ export async function startViewServer(options: ViewServerOptions): Promise<void>
 }
 
 async function listLogFiles(dir: string): Promise<LogEntry[]> {
-  const files = await readdir(dir);
   const entries: LogEntry[] = [];
-  for (const name of files) {
-    if (!name.toLowerCase().endsWith('.log')) continue;
-    try {
-      const fileStat = await stat(join(dir, name));
-      if (!fileStat.isFile()) continue;
-      entries.push({
-        name,
-        sizeBytes: fileStat.size,
-        modifiedAt: fileStat.mtime,
-      });
-    } catch {
-      // skip unreadable files
-    }
-  }
+  await scanDir(dir, dir, entries);
   // Sort by most recently modified first
   entries.sort((a, b) => b.modifiedAt.getTime() - a.modifiedAt.getTime());
   return entries;
+}
+
+/** Recursively scan a directory for .log files, collecting relative paths. */
+async function scanDir(baseDir: string, currentDir: string, entries: LogEntry[]): Promise<void> {
+  let items: string[];
+  try {
+    items = await readdir(currentDir);
+  } catch {
+    return; // skip unreadable directories
+  }
+  for (const item of items) {
+    const fullPath = join(currentDir, item);
+    try {
+      const itemStat = await stat(fullPath);
+      if (itemStat.isDirectory()) {
+        // Recurse into subdirectories (skip hidden dirs like .git)
+        if (!item.startsWith('.')) {
+          await scanDir(baseDir, fullPath, entries);
+        }
+      } else if (itemStat.isFile() && item.toLowerCase().endsWith('.log')) {
+        // Use path relative to baseDir so the viewer can fetch via /logs/<relativePath>
+        const relativePath = fullPath.slice(baseDir.length + 1);
+        entries.push({
+          name: relativePath,
+          sizeBytes: itemStat.size,
+          modifiedAt: itemStat.mtime,
+        });
+      }
+    } catch {
+      // skip unreadable items
+    }
+  }
 }
 
 function formatSize(bytes: number): string {

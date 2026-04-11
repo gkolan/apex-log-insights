@@ -1,5 +1,6 @@
 const STORAGE_KEY = "apex-redaction-settings";
 const LOG_EXPLORER_SETTINGS_KEY = "apex-log-explorer-settings";
+const SIDEBAR_SETTINGS_KEY = "apex-sidebar-settings";
 const THEME_STORAGE_KEY = "apex-log-insights-theme";
 const isFirefox = /Firefox/.test(navigator.userAgent);
 const RAW_CONTEXT_OPTIONS = [0, 2, 5, 10, 25, 50, 100];
@@ -30,6 +31,7 @@ const redactNames = document.getElementById("redactNames");
 const redactNameList = document.getElementById("redactNameList");
 const defaultContextRows = document.getElementById("defaultContextRows");
 const openLinksInNewTab = document.getElementById("openLinksInNewTab");
+const sidebarEnabled = document.getElementById("sidebarEnabled");
 const preferencesPanel = document.getElementById("preferencesPanel");
 const fileAccessBanner = document.getElementById("fileAccessBanner");
 const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
@@ -304,6 +306,25 @@ loadLogExplorerSettings().then((settings) => {
   if (defaultContextRows) defaultContextRows.value = String(settings.contextRows);
   if (openLinksInNewTab) openLinksInNewTab.checked = Boolean(settings.openLinksInNewTab);
 });
+
+// Sidebar settings — only available on Chrome/Edge (not Firefox)
+const sidebarGroup = document.getElementById("sidebarGroup");
+if (!isFirefox && sidebarGroup) {
+  sidebarGroup.hidden = false;
+}
+chrome.storage.local.get(SIDEBAR_SETTINGS_KEY).then((stored) => {
+  const settings = stored?.[SIDEBAR_SETTINGS_KEY] || {};
+  if (sidebarEnabled) sidebarEnabled.checked = Boolean(settings.enabled);
+}).catch(() => {});
+
+if (sidebarEnabled) {
+  sidebarEnabled.addEventListener("change", () => {
+    chrome.storage.local.set({
+      [SIDEBAR_SETTINGS_KEY]: { enabled: sidebarEnabled.checked },
+    }).catch(() => {});
+  });
+}
+
 maybeShowFileAccessBanner();
 
 if (redactEnabled && redactOptions) {

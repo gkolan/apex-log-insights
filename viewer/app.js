@@ -2,8 +2,9 @@ import { maskName, redactLine, redactLines } from "./modules/redact-pii.js";
 import { copyText } from "./modules/shared-dom.js";
 import { rawLogLineFromEvidence, evidenceButton } from "./modules/shared-evidence.js";
 import { escapeHtml } from "./modules/shared-format.js";
+import { initSidebar, populateSidebar } from "./modules/sidebar.js";
 
-const APP_VERSION = "1.1.23";
+const APP_VERSION = "1.1.34";
 const DEFAULT_UI_CONFIG = {
   limits: {
     soql: 5,
@@ -4504,6 +4505,19 @@ function parseLogInWorker(logText, fileName) {
 }
 
 async function initializeViewer() {
+  // Initialize sidebar — file click opens a new tab
+  initSidebar({
+    onFileClick: (fileName) => {
+      window.open(`/?log=${encodeURIComponent(fileName)}`, "_blank");
+    },
+    onRefresh: () => {
+      fetchSidebarFiles();
+    },
+  });
+
+  // Fetch available log files from the CLI server (non-blocking)
+  fetchSidebarFiles();
+
   try {
     const logFileName = getRequestedLogFile();
     if (!logFileName) {
@@ -4545,6 +4559,21 @@ async function initializeViewer() {
     setViewerReady();
     alert(`Could not load log (${String(err)}).`);
   }
+}
+
+/** Fetch log file list from CLI server and populate sidebar. */
+function fetchSidebarFiles() {
+  const currentLog = getRequestedLogFile();
+  fetch("/api/logs")
+    .then((res) => (res.ok ? res.json() : Promise.reject()))
+    .then((files) => {
+      if (Array.isArray(files) && files.length > 0) {
+        populateSidebar(files, currentLog);
+      }
+    })
+    .catch(() => {
+      // Silent fail — sidebar stays hidden (e.g. single-file mode or no server)
+    });
 }
 
 rawSearchBtn.addEventListener("click", () => {

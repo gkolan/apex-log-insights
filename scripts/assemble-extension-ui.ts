@@ -93,6 +93,7 @@ const inlinedModules = [
   'redact-pii.js',
   'shared-dom.js',
   'shared-evidence.js',
+  'sidebar.js',
 ]
   .map(inlineModule)
   .filter(Boolean)

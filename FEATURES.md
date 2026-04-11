@@ -122,6 +122,7 @@ The viewer is zero-dependency vanilla JS ESM running directly from `viewer/`. No
 
 #### Cross-View Features
 
+- **File sidebar** — opt-in overlay sidebar listing sibling `.log` files sorted newest first with last-modified timestamps. Clicking a file opens it in a new tab. In CLI folder mode, auto-populates from the server (recursive scan). In Chrome/Edge, enable via popup settings; a background tab briefly scans the directory listing. Not available on Firefox
 - **Evidence linking** — clicking any SOQL, DML, callout, or issue row in any view jumps to the corresponding line in the Evidence view
 - **Expand/collapse** — all tables support show-more / show-fewer with configurable row defaults
 - **Hash-based navigation** — `#triage`, `#execution`, `#data`, `#diagnostics`, `#evidence`

@@ -246,6 +246,7 @@
       return true;
     };
 
+    // Write payload immediately — sidebar scan happens later from app.html
     chrome.storage.local.set({
       [storageKey]: { logText: pageText, fileName, fileSizeBytes: byteSize, sourceHref: href },
     }).then(() => {

@@ -114,3 +114,135 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     // Tab may have been closed already — ignore.
   }
 });
+
+/* ─── Sidebar: scan file:// directory for .log files ────────────────────── */
+// Chrome renders file:// directory listings via JavaScript — fetch() only
+// returns the raw HTML template without <a> tags. We open a background tab
+// to let Chrome render the listing, scrape the links, then close it.
+// This feature is opt-in (off by default) via popup.html settings.
+
+async function scanDirectoryViaTab(dirUrl) {
+  let tabId;
+  try {
+    const tab = await chrome.tabs.create({ url: dirUrl, active: false });
+    tabId = tab.id;
+  } catch (err) {
+    // scan tab creation failed — silently return empty
+    return [];
+  }
+
+  // Wait for the tab to finish loading (max 4s)
+  await new Promise((resolve) => {
+    const onUpdated = (id, info) => {
+      if (id === tabId && info.status === "complete") {
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      resolve();
+    }, 4000);
+  });
+
+  let files = [];
+  try {
+    const injection = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const results = [];
+
+        // Both Chrome and Firefox render file:// directory listings as
+        // HTML tables with <tr> rows containing <a> links to files.
+        //
+        // Chrome: data-value attribute on <td> contains Unix timestamp.
+        // Firefox: separate Date and Time columns as text (e.g. "2/9/26" + "12:27 PM"),
+        //          plus a sortable-data attribute with a date string.
+        const rows = document.querySelectorAll("tr");
+        rows.forEach((row) => {
+          const link = row.querySelector("a");
+          if (!link) return;
+          // Firefox wraps filenames in a nested table — get just the text
+          const name = (link.textContent || "").replace(/\s+/g, " ").trim();
+          if (!name || name === ".." || name === "." || name.endsWith("/")) return;
+          if (!name.toLowerCase().endsWith(".log")) return;
+          // Skip directory entries (Firefox uses .dir class)
+          if (row.classList.contains("dir")) return;
+
+          let modifiedAt = null;
+          const cells = row.querySelectorAll("td");
+          for (const cell of cells) {
+            if (cell.contains(link)) continue; // skip the name cell
+            // Chrome: data-value with numeric timestamp
+            const dataVal = cell.getAttribute("data-value");
+            if (dataVal && /^\d{10,13}$/.test(dataVal)) {
+              const ts = Number(dataVal);
+              modifiedAt = ts > 1e12 ? ts : ts * 1000;
+              break;
+            }
+            // Firefox: sortable-data with parseable date string
+            const sortable = cell.getAttribute("sortable-data");
+            if (sortable && !modifiedAt) {
+              const parsed = Date.parse(sortable);
+              if (!isNaN(parsed)) { modifiedAt = parsed; continue; }
+            }
+            // Fallback: try parsing cell text as a date
+            const text = (cell.textContent || "").trim();
+            if (!modifiedAt && text && /\d/.test(text)) {
+              const parsed = Date.parse(text);
+              if (!isNaN(parsed) && parsed > 946684800000) { // after year 2000
+                modifiedAt = parsed;
+              }
+            }
+          }
+          results.push({ name, modifiedAt });
+        });
+
+        // Fallback: scrape <a> tags directly (handles unusual formats)
+        if (results.length === 0) {
+          document.querySelectorAll("a").forEach((a) => {
+            const name = (a.textContent || "").trim();
+            if (!name || name === ".." || name === "." || name.endsWith("/")) return;
+            if (!name.toLowerCase().endsWith(".log")) return;
+            results.push({ name, modifiedAt: null });
+          });
+        }
+
+        return results;
+      },
+    });
+    files = injection?.[0]?.result || [];
+  } catch (err) {
+    // executeScript failed — tab may have closed or permission denied
+  }
+
+  // Close the scan tab immediately
+  try { await chrome.tabs.remove(tabId); } catch { /* ignore */ }
+
+  // Sort by last modified descending (newest first), nulls last
+  files.sort((a, b) => {
+    const ta = a.modifiedAt || 0;
+    const tb = b.modifiedAt || 0;
+    return tb - ta;
+  });
+
+  return files;
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "SCAN_DIRECTORY") return false;
+  const dirUrl = String(message.url || "");
+  if (!dirUrl.startsWith("file://")) {
+    sendResponse({ ok: false, files: [] });
+    return false;
+  }
+  scanDirectoryViaTab(dirUrl)
+    .then((files) => {
+      sendResponse({ ok: true, files });
+    })
+    .catch((err) => {
+      sendResponse({ ok: false, files: [] });
+    });
+  return true; // keep channel open for async response
+});

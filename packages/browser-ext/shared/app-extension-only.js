@@ -359,6 +359,7 @@ async function handleExtensionFile(file) {
 }
 
 async function fetchAndDisplayFromUrl(sourceUrl) {
+  persistSourceHref(sourceUrl || "");
   const lower = sourceUrl.toLowerCase();
   const sourceName = sourceUrl.split("/").filter(Boolean).pop() || "debug.log";
   setExtensionBannerFileName(sourceName);
@@ -454,7 +455,8 @@ async function loadStoredSource() {
     if (!payload) {
       throw new Error("Stored log payload was missing.");
     }
-    await chrome.storage.local.remove(storageKey);
+    // Keep the payload in storage so refresh works (re-reads same storageKey).
+    // Old payloads are naturally replaced when the user opens a new log file.
     const expiresAt = Number(payload.expiresAt || 0);
     if (Number.isFinite(expiresAt) && expiresAt > 0 && Date.now() > expiresAt) {
       throw new Error("Stored payload expired. Re-open from the original tab.");
@@ -488,11 +490,9 @@ async function loadStoredSource() {
     if (!payload?.logText) {
       throw new Error("Stored log payload was missing.");
     }
-    // Persist the source URL so refresh can re-fetch the original log file.
+    // Persist the source URL so refresh can re-fetch and sidebar can scan.
     const sourceHref = String(payload.sourceHref || "").trim();
-    if (sourceHref && chrome?.storage?.session) {
-      chrome.storage.session.set({ "apex-source-href": sourceHref }).catch(() => {});
-    }
+    persistSourceHref(sourceHref);
     const logText = String(payload.logText || "");
     const byteSize = Number(payload.fileSizeBytes || new TextEncoder().encode(logText).length);
     setExtensionBannerFileName(String(payload.fileName || "debug.log"));
@@ -525,6 +525,8 @@ async function loadStoredSource() {
       rawLogLines,
       parsePayload: workerPayload,
     });
+    // Populate sidebar from pre-scanned sibling files (if content-launcher included them)
+    extensionPopulateSidebarFromPayload(payload);
     return true;
   } catch (error) {
     setExtensionStatus(`Captured-page load failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -688,16 +690,20 @@ function buildVerdict(report) {
 // extension-specific file picker listener, and extension's init override.
 
 async function tryRestoreCachedReport() {
-  if (!chrome?.storage?.session) return false;
-  try {
-    const stored = await chrome.storage.session.get("apex-source-href");
-    const sourceHref = String(stored?.["apex-source-href"] || "").trim();
-    if (!sourceHref) return false;
-    // Re-fetch and re-parse from the original log URL — full data, no quota issues.
-    return await fetchAndDisplayFromUrl(sourceHref);
-  } catch {
-    return false;
+  // Try session storage first, then local storage (Firefox compat)
+  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(Boolean);
+  for (const store of stores) {
+    try {
+      const stored = await store.get("apex-source-href");
+      const sourceHref = String(stored?.["apex-source-href"] || "").trim();
+      if (!sourceHref) continue;
+      // Re-fetch and re-parse from the original log URL — full data, no quota issues.
+      return await fetchAndDisplayFromUrl(sourceHref);
+    } catch {
+      // try next store
+    }
   }
+  return false;
 }
 
 async function initializeExtensionState() {
@@ -707,6 +713,9 @@ async function initializeExtensionState() {
   document.body.classList.remove("initializing");
   if (chrome?.storage?.session) {
     chrome.storage.session.remove("apex-source-href").catch(() => {});
+  }
+  if (chrome?.storage?.local) {
+    chrome.storage.local.remove("apex-source-href").catch(() => {});
   }
   setExtensionEmptyState(true);
   setExtensionStatus("Ready. Select a local `.log` or `.json` file to begin.");
@@ -945,9 +954,219 @@ topbarHomeLink?.addEventListener("click", goToTriageSummary);
   });
 });
 
+// ─── Extension Sidebar ──────────────────────────────────────────────────────
+
+/** Source href of the loaded log — used to build file:// URLs for sidebar clicks. */
+let extensionLoadedSourceHref = "";
+
+/**
+ * Derive the parent directory file:// URL from a source file URL.
+ */
+function getParentFileUrl(fileUrl) {
+  if (!fileUrl || !fileUrl.startsWith("file://")) return "";
+  const i = fileUrl.lastIndexOf("/");
+  return i >= 7 ? fileUrl.substring(0, i + 1) : "";
+}
+
+/**
+ * Populate the sidebar from the pre-scanned sibling file list stored
+ * by the content-launcher. The content script scans the parent directory
+ * tree BEFORE navigating to app.html, because only content scripts
+ * running on file:// pages can fetch file:// directory listings.
+ * (MV3 service workers cannot fetch file:// URLs.)
+ */
+function extensionPopulateSidebarFromPayload(payload) {
+  const siblings = Array.isArray(payload?.siblingLogFiles) ? payload.siblingLogFiles : [];
+  if (siblings.length <= 1) return; // no siblings besides the current file
+
+  const currentFileName = String(payload?.fileName || "").trim();
+
+  // Persist so sidebar survives page refresh (session + local for Firefox compat)
+  const sidebarData = { "apex-sidebar-files": siblings };
+  if (chrome?.storage?.session) {
+    chrome.storage.session.set(sidebarData).catch(() => {});
+  }
+  if (chrome?.storage?.local) {
+    chrome.storage.local.set(sidebarData).catch(() => {});
+  }
+
+  extensionRenderSidebar(siblings, currentFileName);
+}
+
+/** Restore sidebar from storage (on refresh). Returns true if restored. */
+async function extensionRestoreSidebar() {
+  // Try session storage first, then local storage (Firefox compat)
+  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(Boolean);
+  for (const store of stores) {
+    try {
+      const stored = await store.get(["apex-sidebar-files"]);
+      const files = stored?.["apex-sidebar-files"];
+      if (Array.isArray(files) && files.length > 1) {
+        extensionRenderSidebar(files, "");
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+}
+
+function extensionRenderSidebar(siblings, activeFileName) {
+  const parentDir = getParentFileUrl(extensionLoadedSourceHref);
+
+  // Annotate entries with file:// URLs for click handling
+  const files = siblings.map((f) => ({
+    ...f,
+    fileUrl: parentDir ? parentDir + encodeURIComponent(f.name).replace(/%2F/g, "/") : "",
+  }));
+
+  populateSidebar(files, activeFileName);
+}
+
+/**
+ * Open a sidebar file in a new tab via its file:// URL.
+ * The content script on the new page will auto-detect it as a .log file.
+ */
+function extensionOpenSidebarFile(fileName, entry) {
+  // Update session storage so the new tab highlights the correct file
+  if (chrome?.storage?.session) {
+    chrome.storage.session.set({ "apex-sidebar-active": fileName }).catch(() => {});
+  }
+  const parentDir = getParentFileUrl(extensionLoadedSourceHref);
+  const fileUrl = entry?.fileUrl || (parentDir + encodeURIComponent(fileName).replace(/%2F/g, "/"));
+  if (!fileUrl) return;
+  if (chrome?.tabs?.create) {
+    chrome.tabs.create({ url: fileUrl });
+  } else {
+    window.open(fileUrl, "_blank");
+  }
+}
+
+/** Check if sidebar feature is enabled in settings. */
+async function isSidebarEnabled() {
+  if (!chrome?.storage?.local) return false;
+  try {
+    const stored = await chrome.storage.local.get("apex-sidebar-settings");
+    return Boolean(stored?.["apex-sidebar-settings"]?.enabled);
+  } catch {
+    return false;
+  }
+}
+
+/** Persist the source href to all available storage backends. */
+function persistSourceHref(href) {
+  if (!href) return;
+  extensionLoadedSourceHref = href;
+  const data = { "apex-source-href": href };
+  if (chrome?.storage?.session) {
+    chrome.storage.session.set(data).catch(() => {});
+  }
+  // Also persist to local storage as fallback (Firefox may lack session storage polyfill)
+  if (chrome?.storage?.local) {
+    chrome.storage.local.set(data).catch(() => {});
+  }
+}
+
+/** Resolve the source file:// URL from all available sources. */
+async function resolveSourceHref() {
+  if (extensionLoadedSourceHref && extensionLoadedSourceHref.startsWith("file://")) {
+    return extensionLoadedSourceHref;
+  }
+  // Try URL params
+  const sourceUrl = getExtensionSourceUrl();
+  if (sourceUrl && sourceUrl.startsWith("file://")) {
+    extensionLoadedSourceHref = sourceUrl;
+    return sourceUrl;
+  }
+  // Try session storage
+  if (chrome?.storage?.session) {
+    try {
+      const s = await chrome.storage.session.get("apex-source-href");
+      const href = String(s?.["apex-source-href"] || "").trim();
+      if (href.startsWith("file://")) {
+        extensionLoadedSourceHref = href;
+        return href;
+      }
+    } catch { /* ignore */ }
+  }
+  // Try local storage (fallback for Firefox)
+  if (chrome?.storage?.local) {
+    try {
+      const s = await chrome.storage.local.get("apex-source-href");
+      const href = String(s?.["apex-source-href"] || "").trim();
+      if (href.startsWith("file://")) {
+        extensionLoadedSourceHref = href;
+        return href;
+      }
+    } catch { /* ignore */ }
+  }
+  return "";
+}
+
+/** Scan the parent directory via background script and populate sidebar. */
+async function extensionScanAndPopulateSidebar() {
+  const sourceHref = await resolveSourceHref();
+  if (!sourceHref) return;
+  const parentDir = getParentFileUrl(sourceHref);
+  if (!parentDir) return;
+  try {
+    const response = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "SCAN_DIRECTORY", url: parentDir }, resolve);
+    });
+    if (response?.ok && Array.isArray(response.files) && response.files.length > 1) {
+      const currentFileName = currentReportData?.source?.fileName || "";
+      extensionPopulateSidebarFromPayload({ siblingLogFiles: response.files, fileName: currentFileName });
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function initExtensionSidebar() {
+  initSidebar({
+    onFileClick: (fileName, entry) => {
+      extensionOpenSidebarFile(fileName, entry);
+    },
+    onRefresh: () => {
+      extensionScanAndPopulateSidebar();
+    },
+  });
+
+  // React to setting changes from popup in real-time
+  if (chrome?.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes["apex-sidebar-settings"]) return;
+      const enabled = Boolean(changes["apex-sidebar-settings"].newValue?.enabled);
+      const sidebarEl = document.getElementById("fileSidebar");
+      const toggleBtn = document.getElementById("sidebarToggleBtn");
+      if (enabled) {
+        extensionScanAndPopulateSidebar();
+      } else {
+        // Hide sidebar and toggle immediately
+        if (sidebarEl) {
+          sidebarEl.hidden = true;
+          sidebarEl.classList.remove("open");
+        }
+        if (toggleBtn) {
+          toggleBtn.hidden = true;
+          toggleBtn.classList.remove("shifted");
+        }
+        const overlay = document.getElementById("sidebarOverlay");
+        if (overlay) overlay.hidden = true;
+        // Clear session cache
+        if (chrome?.storage?.session) {
+          chrome.storage.session.remove(["apex-sidebar-files", "apex-sidebar-active"]).catch(() => {});
+        }
+      }
+    });
+  }
+}
+
 async function init() {
   initializeThemeControls?.();
   await initializeLogExplorerSettings?.();
+  initExtensionSidebar();
   const hasAutoSource = Boolean(getExtensionSourceUrl() || getExtensionStorageKey());
   if (hasAutoSource) {
     document.body.classList.add("extension-shell-loading");
@@ -967,6 +1186,12 @@ async function init() {
   syncRawCopyButtons();
   setSectionCollapsed(toggleResourceUsageBtn, resourceUsageBody, true);
   setViewModeFromHash();
+  // Restore sidebar: try session cache first, then live scan if enabled
+  extensionRestoreSidebar().then(async (restored) => {
+    if (!restored && await isSidebarEnabled()) {
+      extensionScanAndPopulateSidebar();
+    }
+  });
 }
 
 init();

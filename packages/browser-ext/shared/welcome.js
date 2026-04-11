@@ -102,6 +102,12 @@ function applyPermissionState(allowed) {
 
   if (allowed) {
     if (onboardingBadge) onboardingBadge.textContent = "Setup complete";
+    const header = document.querySelector(".welcomeGateHeader");
+    if (header) {
+      header.querySelector("h1").textContent = "You\u2019re all set!";
+      header.querySelector("p").innerHTML =
+        'Open a Salesforce <code>.log</code> file in your browser to analyze it. Logs are processed locally on your machine.';
+    }
     if (statusText) {
       statusText.textContent = "";
       statusText.classList.remove("welcomeGateStatusReady");
@@ -124,13 +130,6 @@ async function refreshStatus() {
   if (isFirefox) {
     // Firefox grants file:// access via install permissions — no separate toggle needed.
     applyPermissionState(true);
-    if (onboardingBadge) onboardingBadge.textContent = "Setup complete";
-    const header = document.querySelector(".welcomeGateHeader");
-    if (header) {
-      header.querySelector("h1").textContent = "You\u2019re all set!";
-      header.querySelector("p").innerHTML =
-        'Open a Salesforce <code>.log</code> file in your browser to analyze it.<br />Logs are processed locally on your machine.';
-    }
     return true;
   }
   const allowed = await getFileSchemeAccessAllowed();

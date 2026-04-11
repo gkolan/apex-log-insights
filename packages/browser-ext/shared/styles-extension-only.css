@@ -654,6 +654,13 @@ body.welcome-permission-enabled .welcomeGateSteps {
   background: var(--surface-soft);
 }
 
+.popupBody .popupSettingHint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
 /* ── Redaction (scoped to popup) ──────────────────────────────────────────── */
 
 .popupBody .redactRow {
