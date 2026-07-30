@@ -2,39 +2,39 @@
 
 A TypeScript monorepo that parses Salesforce Apex debug logs into structured, analyzable data. Ships as an npm library, CLI, MCP server, and browser extensions (Chrome, Edge, Firefox).
 
-Everything runs locally — your log data never leaves your machine.
+Everything runs locally. Your log data never leaves your machine.
 
-[Changelog](CHANGELOG.md) · [Releases](https://github.com/gkolan/apex-log-insights/releases) · [Report a bug](https://github.com/gkolan/apex-log-insights/issues)
+## Browser Extension
 
----
+[![Get it from Microsoft Edge Add-ons](https://img.shields.io/badge/Microsoft_Edge_Add--ons-Install-0078D7?logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian) [![Get the Firefox Add-on](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/) [![Install from the Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp)
+
+Works on Chrome, Edge, and Firefox (all Manifest V3). Drag a `.log` file onto the extension or load a pre-generated `.apex-insights.json` report. The content script auto-detects debug logs open in browser tabs and offers to redirect them to the analyzer.
+
+<p align="center"><img src="docs/images/3.png" alt="Apex Log Insights Triage Summary in dark mode" width="49%" /> <img src="docs/images/2.png" alt="Apex Log Insights Execution Story in light mode" width="49%" /></p>
 
 ## What It Does
 
 Takes a raw Apex debug log and produces a structured report covering:
 
 - 20-phase DML lifecycle mapping (Load Original Record → Post-Commit Logic) with governor limit burn rates per phase
-- SOQL analysis — query text, rows, duration, bind variables, explain plans, N+1 loop detection
-- DML analysis — operation type, sObject, row count, log line reference
-- Callout and Named Credential tracking — HTTP method, URL, status, duration
+- SOQL analysis: query text, rows, duration, bind variables, explain plans, N+1 loop detection
+- DML analysis: operation type, sObject, row count, log line reference
+- Callout and Named Credential tracking: HTTP method, URL, status, duration
 - CPU attribution by class and namespace, heap timeline, governor limit trajectory
 - Trigger cascade detection, recursive trigger warnings, mixed DML detection
 - Execution context identification (trigger, batch, future, queueable, scheduled, platform event, anonymous)
-- Evidence linking — every finding traces back to the exact raw log line
+- Evidence linking: every finding traces back to the exact raw log line
 
 The core parser has zero runtime dependencies.
-
----
 
 ## Packages
 
 | Package | Description | Install |
 |---------|-------------|---------|
 | [`@apex-log-insights/core`](packages/core) | Shared parsing engine | `pnpm add @apex-log-insights/core` |
-| [`@apex-log-insights/cli`](packages/cli) | CLI — serves a local viewer in the browser | `pnpm add -g @apex-log-insights/cli` |
+| [`@apex-log-insights/cli`](packages/cli) | CLI that serves a local viewer in the browser | `pnpm add -g @apex-log-insights/cli` |
 | [`@apex-log-insights/mcp`](packages/mcp) | MCP server for Claude, Cursor, and AI tools | `npx @apex-log-insights/mcp` |
 | [`@apex-log-insights/browser-ext`](packages/browser-ext) | Browser extension (Chrome, Edge, Firefox) | See below |
-
----
 
 ## Quick Start
 
@@ -44,7 +44,7 @@ The core parser has zero runtime dependencies.
 pnpm add -g @apex-log-insights/cli
 
 apex-log debug.log          # opens the viewer in your browser
-apex-log ./logs/            # folder mode — sortable file listing
+apex-log ./logs/            # folder mode with a sortable file listing
 ```
 
 Parsing happens client-side in a Web Worker. Nothing is written to disk.
@@ -64,13 +64,9 @@ Add to your Claude Desktop or Claude Code config:
 }
 ```
 
-Exposes 5 tools: `parse_apex_log`, `analyze_performance`, `analyze_soql`, `analyze_governor_limits`, `summarize_log`. The server runs locally and makes zero network requests. Structured results are passed to your AI client via stdio — if it uses a cloud API, that data leaves your machine through the AI's pipeline.
+Exposes 5 tools: `parse_apex_log`, `analyze_performance`, `analyze_soql`, `analyze_governor_limits`, `summarize_log`. The server runs locally and makes zero network requests. Structured results are passed to your AI client via stdio. If it uses a cloud API, that data leaves your machine through the AI's pipeline.
 
 Every tool accepts an optional `redact: true` parameter that masks Salesforce IDs, emails, phone numbers, and debug message content before results reach the AI.
-
-### Browser Extension
-
-Works on Chrome, Edge, and Firefox (all Manifest V3). Drag a `.log` file onto the extension or load a pre-generated `.apex-insights.json` report. The content script auto-detects debug logs open in browser tabs and offers to redirect them to the analyzer. Store listings are pending — you can load the unpacked extension from `packages/browser-ext/dist/` in the meantime.
 
 ### As a Library
 
@@ -86,8 +82,6 @@ const report = buildInsightsReport({
   parserResult: parsed.parserResult,
 });
 ```
-
----
 
 ## Development
 
@@ -134,12 +128,12 @@ scripts/               → build & release utilities
   (commander)   (@mcp/sdk)   (vite, esbuild)
 ```
 
----
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+[Changelog](CHANGELOG.md) · [Releases](https://github.com/gkolan/apex-log-insights/releases) · [Report a bug](https://github.com/gkolan/apex-log-insights/issues)
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
