@@ -1,6 +1,6 @@
 # AGENTS.md — AI Agent Context
 
-This file provides context for AI coding agents (Codex, Gemini, Kimi, and others) working on this codebase.
+Use this file to orient coding agents before they inspect or change the repository. The goal is to send each change to the correct layer, preserve generated-file boundaries, and require the same tests and documentation updates expected from a human contributor.
 
 ## Project
 
@@ -12,14 +12,17 @@ Before making any changes, read these files:
 
 - `CONTRIBUTING.md` — Architecture, bug-fix workflows, build targets, version bumping, release process
 - `STYLE_GUIDE.md` — Code style, TypeScript conventions, architecture invariants, naming rules
+- `docs/development/documentation-standard.md` — Purpose, task order, descriptions, and verification for project writing
+- `docs/reference/terminology.md` — Approved public terms, view labels, abbreviations, and names to avoid
+- `docs/development/writing-guide.md` — Natural, specific, evidence-based prose
 
-## Architecture — The Three-Layer Rule
+## Architecture — the three-layer rule
 
 ```
 Layer 1 — Parser      packages/core/src/certinia/   → raw event extraction
 Layer 2 — Report      packages/core/src/insights/*   → structured report JSON
-Layer 3 — Renderer    viewer/modules/render-*.js     → UI display
-                      packages/browser-ext/app.js
+Layer 3 — Renderer    viewer sources                 → shared UI display
+                      extension-only overlays        → extension-specific UI
 ```
 
 Fix bugs at the lowest layer where they originate. Never patch the renderer to work around a parser gap. Never add format checks in render modules — that belongs in `normalize-report.js`.
@@ -31,6 +34,7 @@ packages/core/         → shared parsing engine (zero runtime dependencies)
 packages/cli/          → command-line interface
 packages/mcp/          → MCP server for AI tools
 packages/browser-ext/  → browser extension (Chrome, Edge, Firefox)
+packages/vscode-ext/   → VS Code host adapter and packaged webview
 viewer/                → offline HTML viewer (vanilla JS, no build step)
 fixtures/              → shared test log files
 scripts/               → build & release utilities
@@ -47,21 +51,26 @@ pnpm install                    # install dependencies
 # ── Develop ──
 pnpm dev:cli                    # watch mode for CLI
 pnpm dev:mcp                    # watch mode for MCP server
+pnpm dev:vscode                 # watch mode for VS Code extension
+pnpm test:vscode                # VS Code Extension Host integration test
 pnpm dev:ext                    # watch mode for browser extension
 
 # ── Validate ──
 pnpm lint                       # ESLint all packages
 pnpm format                     # Prettier format all files
 pnpm typecheck                  # TypeScript check all packages
-pnpm test                       # run all tests (vitest)
+pnpm validate                   # required health gate (format, lint, types, tests, versions, docs)
+pnpm test                       # run active tests (vitest)
 
 # ── Build ──
 pnpm clean                      # remove all dist/ folders
-pnpm build                      # sync versions → build all → export extension
+pnpm build                      # build packages and extensions at the current version
 
 # ── Quality ──
-pnpm audit                      # security scan → audit/*.md
-pnpm bugs                       # bug scan → bugs/*.md
+pnpm audit:report               # security scan → audit/*.md
+pnpm bugs:report                # bug scan → bugs/*.md
+pnpm audit:docs                 # structural documentation quality gate
+pnpm test:corpus                # optional pinned Certinia large-log compatibility gate
 
 # ── Release ──
 pnpm release                    # build + publish all packages
@@ -77,7 +86,7 @@ pnpm --filter @apex-log-insights/browser-ext build:chrome
 pnpm --filter @apex-log-insights/browser-ext build:chrome -- --version 1.2.0
 ```
 
-## Version Management
+## Version management
 
 Single version source in root `package.json`. Run `node scripts/sync-versions.mjs` to propagate to all packages and manifests. Or use the `--version` flag on the build scripts.
 
@@ -87,14 +96,14 @@ Prefix commits with the affected layer: `parser:`, `report:`, `viewer:`, or `ext
 
 ## Build: Extension UI Assembly
 
-`pnpm build` automatically assembles the extension UI via `scripts/assemble-extension-ui.ts`. This merges `viewer/app.js` and `viewer/styles.css` with extension-only overlays into `shared/`. Changes to viewer sources propagate to the extension on every full build. Never edit `shared/app.js` or `shared/styles.css` directly — they are generated.
+`pnpm build` automatically assembles the extension UI via `scripts/assemble-extension-ui.ts`. The shared five-view shell lives in `viewer/index.html`; `viewer/app.js` hydrates it and owns routing, while `viewer/styles.css` owns its visual hierarchy. The assembler combines those canonical viewer sources and extension-only overlays into `shared/`. Changes to viewer sources propagate to the extension on every full build. Never edit `shared/app.js` or `shared/styles.css` directly — they are generated.
 
 ## Critical Rules
 
 1. `normalize-report.js` is the only place that handles format differences
 2. No build step for the viewer — it is zero-dependency vanilla JS ESM
 3. `apex-parser-worker.js` is a build artifact — never edit directly
-3b. `shared/app.js` and `shared/styles.css` are generated by `assemble-extension-ui.ts` — never edit directly
+   3b. `shared/app.js` and `shared/styles.css` are generated by `assemble-extension-ui.ts` — never edit directly
 4. Parser bugs → fix in `packages/core/src/certinia/`
 5. Report bugs → fix in `packages/core/src/insights/*.ts`
 6. Display bugs → fix in the viewer or extension `app.js`
@@ -110,7 +119,7 @@ Do not leave documentation for a follow-up — update it as part of the work.
 
 - Build scripts, commands, or flags → `CONTRIBUTING.md`, `packages/browser-ext/README.md`, `README.md`
 - Architecture, layers, or package structure → `CONTRIBUTING.md`, `STYLE_GUIDE.md`, all agent config files (see below)
-- CI/CD workflows or release process → `CONTRIBUTING.md` (Release Flow section)
+- CI/CD workflows or release process → `CONTRIBUTING.md`, `docs/development/releasing.md`
 - New features, bug fixes, or breaking changes → `CHANGELOG.md` (Keep a Changelog format)
 - Feature additions or removals → `FEATURES.md`
 - New report fields or event types → `CONTRIBUTING.md` (checklists)

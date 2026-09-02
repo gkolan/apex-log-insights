@@ -1,6 +1,6 @@
 {
   "name": "@apex-log-insights/core",
-  "version": "1.1.33",
+  "version": "1.2.0",
   "description": "Salesforce Apex debug log parser — shared parsing engine with zero runtime dependencies.",
   "author": "Gautam Kolan",
   "license": "MIT",

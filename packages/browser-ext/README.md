@@ -1,19 +1,24 @@
 # @apex-log-insights/browser-ext
 
-Browser extension for analyzing Salesforce Apex debug logs. One shared codebase, three browser targets.
+Use this guide to build, load, and package the Apex Log Insights browser extension for Chrome, Edge, or Firefox. After following it, you should have either an unpacked development extension or a versioned store archive built from the canonical viewer sources.
 
-## How It Works
+## How it works
 
-The extension uses a single set of source files (`shared/`) compiled against browser-specific manifests (`manifests/chrome`, `manifests/edge`, `manifests/firefox`). The build scripts assemble the correct combination for each store.
+The extension reuses the canonical viewer and adds extension-only overlays. Build scripts generate shared assets and combine them with browser-specific manifests. Theme updates preserve the viewer's established panel, table, and finding hierarchy across every host.
+
+The analyzer validates canonical schema `3.0.0` before display, supports picker and drag-and-drop input, shares theme state with the popup, and retains actionable automatic-load failures. Sibling-log storage cleanup is restricted to generated cache keys so user preferences survive.
 
 ```
-shared/                 ← HTML, JS, CSS, icons (identical across browsers)
-  app.html, app.js      ← Main analyzer UI
+shared/                 ← Extension HTML, overlays, icons, and generated assets
+  app.html              ← Main analyzer shell
+  app-extension-only.js ← Canonical extension-only behavior
+  app.js                ← Generated; never edit directly
   popup.html, popup.js  ← Extension popup (quick actions)
   background.js         ← Service worker / background script
   content/              ← Content scripts + built worker
   icons/                ← Extension icons (idle + active states)
-  styles.css            ← Shared stylesheet
+  styles-extension-only.css ← Canonical extension-only styles
+  styles.css            ← Generated; never edit directly
 
 manifests/
   chrome/manifest.json  ← Manifest V3 for Chrome Web Store
@@ -27,7 +32,17 @@ src/
 
 ## Building
 
-Running `pnpm build` from the repo root builds **all** packages, including the extension. The browser-ext `build` step does two things: (1) bundles the TypeScript worker via esbuild, and (2) assembles `shared/app.js` and `shared/styles.css` by merging the viewer sources with extension-only overlays (`scripts/assemble-extension-ui.ts`). This means changes to `viewer/app.js` or `viewer/styles.css` are automatically propagated to the extension on every build.
+The popup's **Clear cached logs** action removes captured `apex-log-*` payloads while preserving theme, redaction, Log Explorer, and sidebar preferences.
+
+The extension keeps investigation inside five views: **Triage Summary**, **Execution Story**, **Data & Limits**, **Diagnostics**, and **Log Explorer**.
+
+Triage checks log quality without showing a routine success card. If Salesforce truncated the log, skipped content, or omitted a transaction boundary, Triage shows a **Log quality warning** explaining why some conclusions may be incomplete. When the log contains an exception, **Failure context** links the recorded events immediately before that failure to Log Explorer.
+
+Raw logs and local JSON reports are limited to 25 MiB. Local-file and captured-page paths reject larger input before caching or expanding it into raw lines, and the parser worker independently enforces the same boundary for direct messages. Its single `PARSE_LOG` protocol requires non-empty text and accepts `fileId` only as an optional non-empty string, preserving report metadata types. Worker-side UTF-8 sizing does not allocate a second encoded copy of the complete log. URL-loaded logs are read through a bounded stream, so missing, compressed, or inaccurate `Content-Length` headers cannot bypass the decompressed-byte limit.
+
+Automatic handoffs accept only credential-free HTTP, HTTPS, or file URLs whose path ends in `.log`. Storage handoffs accept only keys generated for captured logs or short-lived new-tab report state; arbitrary extension storage keys are ignored.
+
+Running `pnpm build` from the repository root builds all packages and extension archives at the current version. It never increments the version. The browser-ext build bundles the TypeScript worker and assembles generated `shared/app.js` and `shared/styles.css` from viewer sources plus extension-only overlays.
 
 To build the final browser-specific zips/xpi for store upload, use the per-browser build scripts. All three follow the same process: build the TypeScript worker, copy shared assets, overlay the browser-specific manifest, and zip with a versioned filename.
 
@@ -56,15 +71,15 @@ bash scripts/build-chrome.sh --version 1.2.0 # bump and build
 
 Each build produces an unpacked folder (for development) and a versioned zip (for distribution). Old versioned zips are cleaned up automatically on each build.
 
-| Browser | Unpacked directory | Upload-ready file |
-|---------|-------------------|-------------------|
-| Chrome  | `dist/chrome/`    | `dist/chrome-extension-v1.2.0.zip` |
-| Edge    | `dist/edge/`      | `dist/edge-extension-v1.2.0.zip`   |
-| Firefox | `dist/firefox/`   | `dist/firefox-extension-v1.2.0.xpi`|
+| Browser | Unpacked directory | Upload-ready file                   |
+| ------- | ------------------ | ----------------------------------- |
+| Chrome  | `dist/chrome/`     | `dist/chrome-extension-v1.2.0.zip`  |
+| Edge    | `dist/edge/`       | `dist/edge-extension-v1.2.0.zip`    |
+| Firefox | `dist/firefox/`    | `dist/firefox-extension-v1.2.0.xpi` |
 
 All JavaScript in the zips is minified. Source code in `src/` stays readable for contributors.
 
-## Loading for Development
+## Load the extension for development
 
 ### Chrome
 
@@ -91,7 +106,7 @@ All JavaScript in the zips is minified. Source code in `src/` stays readable for
 
 Note: Temporary add-ons in Firefox are removed when the browser closes. For persistent installation during development, use `web-ext run` or sign the extension.
 
-## Why One Codebase, Three Manifests?
+## Why the project has three manifests
 
 Chrome and Edge both use Manifest V3 with nearly identical schemas. The only difference between their manifests is metadata (store-specific fields). Firefox also supports MV3 but has a key structural difference: it uses `"background": { "scripts": ["background.js"] }` instead of `"background": { "service_worker": "background.js" }`. Keeping manifests separate while sharing all source code avoids duplicating the entire extension.
 
@@ -117,8 +132,10 @@ Firefox manifest note: `manifests/firefox/manifest.json` includes
 `browser_specific_settings.gecko.data_collection_permissions` with
 `required: ["none"]` to satisfy Firefox Add-ons validation for new submissions.
 
-## Version Management
+## Version management
 
 All versions are managed from the root `package.json` and synced into each manifest via `node scripts/sync-versions.mjs`. Never edit manifest versions by hand.
 
-The easiest way to bump and build is the `--version` flag on the build scripts (see Building above). For a manual bump: edit the root `package.json`, run `node scripts/sync-versions.mjs`, then build.
+For the complete validation, version, artifact, and publication sequence, use the repository [Release guide](../../docs/development/releasing.md).
+
+Before packaging, run root `pnpm format:check` or `pnpm validate`. Formatting discovers maintained extension worker sources and documentation from Git but excludes assembled files under `shared/`, which are regenerated by the build pipeline.

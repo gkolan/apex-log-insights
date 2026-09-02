@@ -1,6 +1,6 @@
-# Firefox Manifest
+# Firefox manifest
 
-This `manifest.json` is the Manifest V3 configuration for Firefox Add-ons.
+Use this page when changing or loading the Firefox manifest. The goal is to preserve Firefox's background-script and data-collection declarations while sharing application sources with the other browser builds.
 
 ## Key differences from other browsers
 

@@ -16,7 +16,7 @@ function getFileSchemeAccessAllowed() {
         return;
       }
       let timeoutId;
-      const cleanup = (result) => {
+      const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId);
       };
       timeoutId = setTimeout(() => {
@@ -42,22 +42,34 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = nextTheme;
   themeLightBtn?.classList.toggle("is-active", nextTheme === "light");
   themeDarkBtn?.classList.toggle("is-active", nextTheme === "dark");
-  themeLightBtn?.setAttribute("aria-pressed", nextTheme === "light" ? "true" : "false");
-  themeDarkBtn?.setAttribute("aria-pressed", nextTheme === "dark" ? "true" : "false");
+  themeLightBtn?.setAttribute(
+    "aria-pressed",
+    nextTheme === "light" ? "true" : "false",
+  );
+  themeDarkBtn?.setAttribute(
+    "aria-pressed",
+    nextTheme === "dark" ? "true" : "false",
+  );
   return nextTheme;
 }
 
 async function getPreferredTheme() {
   try {
     const stored = await chrome.storage.local.get(THEME_STORAGE_KEY);
-    if (stored?.[THEME_STORAGE_KEY] === "light" || stored?.[THEME_STORAGE_KEY] === "dark") {
+    if (
+      stored?.[THEME_STORAGE_KEY] === "light" ||
+      stored?.[THEME_STORAGE_KEY] === "dark"
+    ) {
       return stored[THEME_STORAGE_KEY];
     }
   } catch {
     // Ignore storage issues and fall back to system preference.
   }
   try {
-    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+    ) {
       return "light";
     }
   } catch {
@@ -86,12 +98,16 @@ async function openExtensionSettings() {
       await chrome.tabs.create({ url: "about:addons" });
     } catch {
       // about:addons blocked — guide user manually
-      window.alert("Open about:addons in your address bar, then click Apex Log Insights to manage permissions.");
+      window.alert(
+        "Open about:addons in your address bar, then click Apex Log Insights to manage permissions.",
+      );
     }
     return;
   }
   try {
-    await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+    await chrome.tabs.create({
+      url: `chrome://extensions/?id=${chrome.runtime.id}`,
+    });
   } catch {
     await chrome.tabs.create({ url: "chrome://extensions" });
   }
@@ -106,7 +122,7 @@ function applyPermissionState(allowed) {
     if (header) {
       header.querySelector("h1").textContent = "You\u2019re all set!";
       header.querySelector("p").innerHTML =
-        'Open a Salesforce <code>.log</code> file in your browser to analyze it. Logs are processed locally on your machine.';
+        "Open a Salesforce <code>.log</code> file in your browser to analyze it. Logs are processed locally on your machine.";
     }
     if (statusText) {
       statusText.textContent = "";

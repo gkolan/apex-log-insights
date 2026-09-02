@@ -29,6 +29,11 @@ body.extension-loaded #extensionLoaderPanel {
   display: none;
 }
 
+#extensionLoaderPanel.is-drop-target {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 #extensionLoadingPlaceholder {
   display: none;
   min-height: 640px;

@@ -1,139 +1,110 @@
 # Apex Log Insights
 
-A TypeScript monorepo that parses Salesforce Apex debug logs into structured, analyzable data. Ships as an npm library, CLI, MCP server, and browser extensions (Chrome, Edge, Firefox).
+Apex Log Insights turns Salesforce Apex debug logs into evidence-backed, searchable reports. It is available as a browser extension, local CLI, TypeScript library, and MCP server for AI clients.
 
-Everything runs locally. Your log data never leaves your machine.
+Log processing is local. The MCP server also parses locally, but its structured results are passed to your AI client; see [Privacy and security](docs/user-guides/privacy.md).
 
-## Browser Extension
+## Start here
 
-[![Get it from Microsoft Edge Add-ons](https://img.shields.io/badge/Microsoft_Edge_Add--ons-Install-0078D7?logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian) [![Get the Firefox Add-on](https://img.shields.io/badge/Firefox_Add--ons-Install-FF7139?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/) [![Install from the Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp)
+| Your goal                           | Best option       | Guide                                                                              |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
+| Open a log and investigate visually | Browser extension | [Install and analyze a log](docs/user-guides/getting-started.md#browser-extension) |
+| Analyze a log beside its source     | VS Code extension | [VS Code quick start](docs/user-guides/getting-started.md#vs-code-extension)       |
+| Open local logs from a terminal     | CLI               | [CLI quick start](docs/user-guides/getting-started.md#cli)                         |
+| Add parsing to an application       | Core library      | [Core API](docs/reference/api/core.md)                                             |
+| Let an AI client analyze logs       | MCP server        | [MCP setup](packages/mcp/README.md)                                                |
+| Contribute to the project           | Monorepo          | [Contributing](CONTRIBUTING.md)                                                    |
 
-Works on Chrome, Edge, and Firefox (all Manifest V3). Drag a `.log` file onto the extension or load a pre-generated `.apex-insights.json` report. The content script auto-detects debug logs open in browser tabs and offers to redirect them to the analyzer.
+Install the extension from [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian), or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/).
 
-<p align="center"><img src="docs/images/3.png" alt="Apex Log Insights Triage Summary in dark mode" width="49%" /> <img src="docs/images/2.png" alt="Apex Log Insights Execution Story in light mode" width="49%" /></p>
+<p align="center"><img src="assets/images/3.png" alt="Apex Log Insights Triage Summary in dark mode" width="49%" /> <img src="assets/images/2.png" alt="Apex Log Insights Execution Story in light mode" width="49%" /></p>
 
-## What It Does
+## What the report explains
 
-Takes a raw Apex debug log and produces a structured report covering:
+- transaction outcome, errors, warnings, and instrumentation quality;
+- execution order, context, phases, trigger cascades, recursion, and hotspots;
+- SOQL, DML, callouts, named credentials, savepoints, and duplicate-query patterns;
+- governor-limit trajectory, burn rate, CPU attribution, and heap usage;
+- evidence links from every supported finding to the relevant raw log line.
 
-- 20-phase DML lifecycle mapping (Load Original Record → Post-Commit Logic) with governor limit burn rates per phase
-- SOQL analysis: query text, rows, duration, bind variables, explain plans, N+1 loop detection
-- DML analysis: operation type, sObject, row count, log line reference
-- Callout and Named Credential tracking: HTTP method, URL, status, duration
-- CPU attribution by class and namespace, heap timeline, governor limit trajectory
-- Trigger cascade detection, recursive trigger warnings, mixed DML detection
-- Execution context identification (trigger, batch, future, queueable, scheduled, platform event, anonymous)
-- Evidence linking: every finding traces back to the exact raw log line
+The parser reports what the log supports. Missing debug events or insufficient debug levels can reduce confidence, and the Diagnostics view calls out those limitations.
 
-The core parser has zero runtime dependencies.
+## How transaction reconstruction works
+
+**Apex Log Insights reconstructs the complete transaction visible in one Salesforce debug log.** It follows the execution boundary, nests code units and operations in timestamp order, and links supported conclusions to the originating log lines.
+
+| Log evidence                                                                                           | How it is used                                                                                    |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `EXECUTION_STARTED` and `EXECUTION_FINISHED`                                                           | Define the outer boundary of the recorded transaction.                                            |
+| `CODE_UNIT_STARTED` and `CODE_UNIT_FINISHED`                                                           | Identify the entry point and nested units such as triggers, classes, flows, and workflow actions. |
+| `METHOD_ENTRY` / `METHOD_EXIT`, `DML_BEGIN` / `DML_END`, and `SOQL_EXECUTE_BEGIN` / `SOQL_EXECUTE_END` | Reconstruct nested operations and their order.                                                    |
+| Timestamps and event sequence                                                                          | Preserve the timeline and calculate durations where both boundaries are available.                |
+| User, execution-context, limit, validation, workflow, flow, and callout events                         | Explain what occurred inside the recorded boundary.                                               |
+| Raw-line evidence references                                                                           | Let users verify findings against the source log.                                                 |
+
+One Apex debug log represents one logged execution context—not necessarily the entire business process. Queueable jobs, future methods, batch executions, platform-event subscribers, and other asynchronous work normally run as separate transactions and produce separate logs. Investigating that work requires the related logs.
+
+Salesforce can also truncate a log, skip sections, or omit events because of its configured debug levels. Apex Log Insights checks those conditions silently when the evidence appears complete. Triage shows a **Log quality warning** only when missing or uncertain evidence could change the interpretation. When an exception is captured, Triage shows the recorded events immediately preceding it as **Failure context**.
 
 ## Packages
 
-| Package | Description | Install |
-|---------|-------------|---------|
-| [`@apex-log-insights/core`](packages/core) | Shared parsing engine | `pnpm add @apex-log-insights/core` |
-| [`@apex-log-insights/cli`](packages/cli) | CLI that serves a local viewer in the browser | `pnpm add -g @apex-log-insights/cli` |
-| [`@apex-log-insights/mcp`](packages/mcp) | MCP server for Claude, Cursor, and AI tools | `npx @apex-log-insights/mcp` |
-| [`@apex-log-insights/browser-ext`](packages/browser-ext) | Browser extension (Chrome, Edge, Firefox) | See below |
+| Package                          | Purpose                                          | Package guide                                       |
+| -------------------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| `@apex-log-insights/core`        | Zero-runtime-dependency parser and report engine | [Core package](packages/core/README.md)             |
+| `@apex-log-insights/cli`         | Local HTTP server and browser viewer             | [CLI package](packages/cli/README.md)               |
+| `@apex-log-insights/mcp`         | Local MCP tool server                            | [MCP package](packages/mcp/README.md)               |
+| `@apex-log-insights/browser-ext` | Chrome, Edge, and Firefox extension source       | [Extension package](packages/browser-ext/README.md) |
+| `packages/vscode-ext`            | Installable VS Code extension and secure webview | [VS Code package](packages/vscode-ext/README.md)    |
 
-## Quick Start
+## Documentation
 
-### CLI
+The [documentation index](docs/README.md) organizes information into user guides, reference, development, and release buckets. Contributors use the [documentation standard](docs/development/documentation-standard.md) and [project terminology](docs/reference/terminology.md) when changing public text or names.
 
-```bash
-pnpm add -g @apex-log-insights/cli
-
-apex-log debug.log          # opens the viewer in your browser
-apex-log ./logs/            # folder mode with a sortable file listing
-```
-
-Parsing happens client-side in a Web Worker. Nothing is written to disk.
-
-### MCP Server
-
-Add to your Claude Desktop or Claude Code config:
-
-```json
-{
-  "mcpServers": {
-    "apex-log-insights": {
-      "command": "npx",
-      "args": ["-y", "@apex-log-insights/mcp"]
-    }
-  }
-}
-```
-
-Exposes 5 tools: `parse_apex_log`, `analyze_performance`, `analyze_soql`, `analyze_governor_limits`, `summarize_log`. The server runs locally and makes zero network requests. Structured results are passed to your AI client via stdio. If it uses a cloud API, that data leaves your machine through the AI's pipeline.
-
-Every tool accepts an optional `redact: true` parameter that masks Salesforce IDs, emails, phone numbers, and debug message content before results reach the AI.
-
-### As a Library
-
-```typescript
-import { parseLog, buildInsightsReport } from '@apex-log-insights/core';
-
-const parsed = await parseLog(logText, { enablePhaseInference: true });
-const report = buildInsightsReport({
-  filePath: 'debug.log',
-  fileBytes: logText.length,
-  generatedAt: new Date().toISOString(),
-  parseTimeMs: parsed.parseTimeMs,
-  parserResult: parsed.parserResult,
-});
-```
+- [Getting started](docs/user-guides/getting-started.md)
+- [Privacy and security](docs/user-guides/privacy.md)
+- [Troubleshooting](docs/user-guides/troubleshooting.md)
+- [Writing guide](docs/development/writing-guide.md)
+- [Testing and coverage](docs/development/testing.md)
+- [Core API](docs/reference/api/core.md)
+- [Report schema](docs/reference/report-schema.md)
+- [Architecture](docs/development/architecture.md)
+- [Feature reference](FEATURES.md)
+- [Changelog](CHANGELOG.md)
 
 ## Development
 
-Requires **Node.js 18+** and **pnpm**.
+Requires Node.js 18 or later and pnpm 9.
 
 ```bash
-git clone https://github.com/gkolan/apex-log-insights.git
-cd apex-log-insights
-pnpm install
-pnpm build          # sync versions → build all → export extension
-pnpm test           # run all tests
-pnpm dev:cli        # watch mode for CLI
-pnpm dev:ext        # watch mode for browser extension
+corepack enable
+corepack prepare pnpm@9.15.4 --activate
+pnpm install --frozen-lockfile
+pnpm format:check
+pnpm audit:docs
+pnpm validate
+pnpm test:coverage
+pnpm test:corpus
+pnpm build
 ```
 
-```bash
-pnpm audit          # security scan → audit/*.md
-pnpm bugs           # bug scan → bugs/*.md
-```
+The parser retains zero runtime dependencies. Repository development uses Vitest and its V8 coverage provider; generated coverage reports stay local under the ignored `coverage/` directory.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, architecture guide, and release process.
+`pnpm test:corpus` is an optional networked compatibility gate for the pinned
+public Certinia Debug Log Analyzer sample. The command verifies the download,
+prints privacy-safe aggregate results, and removes a newly downloaded copy
+unless `--keep` is supplied. External logs remain ignored and are never part of
+the npm or extension artifacts.
 
-### Project Structure
+`pnpm format` and `pnpm format:check` discover maintained non-UI source and documentation files from Git, including non-ignored new files, while leaving generated extension/viewer bundles untouched.
 
-```
-packages/core/         → shared parsing engine (zero runtime deps)
-packages/cli/          → CLI distribution
-packages/mcp/          → MCP server
-packages/browser-ext/  → browser extension
-viewer/                → offline HTML viewer (vanilla JS, no build step)
-fixtures/              → shared test log files
-scripts/               → build & release utilities
-```
+`pnpm audit:docs` scores every page under `docs/` against the repository's ten structural writing checks. `pnpm validate` also runs this audit and verifies local links and heading anchors.
 
-### Dependency Graph
+`pnpm build` rebuilds the current version and does not increment it. Read [Contributing](CONTRIBUTING.md) before changing code and [Releasing](docs/development/releasing.md) before changing a version.
 
-```
-            @apex-log-insights/core
-            (zero runtime dependencies)
-                      │
-         ┌────────────┼────────────┐
-         │            │            │
-     @cli          @mcp      @browser-ext
-  (commander)   (@mcp/sdk)   (vite, esbuild)
-```
+## Support and license
 
-## Contributing
+[Report a bug](https://github.com/gkolan/apex-log-insights/issues) with a minimal synthetic or sanitized log. Do not attach production logs without reviewing them for sensitive data.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Licensed under the [MIT License](LICENSE).
 
-[Changelog](CHANGELOG.md) · [Releases](https://github.com/gkolan/apex-log-insights/releases) · [Report a bug](https://github.com/gkolan/apex-log-insights/issues)
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+The shared report UI is organized around Triage Summary, Execution Story, Data & Limits, Diagnostics, and Log Explorer. It renders the canonical normalized view model across every host, including execution hierarchy, lifecycle phases, resource trajectories, record and automation evidence, diagnostic attribution, and paged raw-log exploration.

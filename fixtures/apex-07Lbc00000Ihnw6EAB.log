@@ -1,0 +1,23 @@
+55.0 APEX_CODE,FINEST;APEX_PROFILING,FINEST;CALLOUT,INFO;DATA_ACCESS,NONE;DB,FINEST;NBA,FINE;SYSTEM,FINE;VALIDATION,INFO;VISUALFORCE,FINER;WAVE,FINEST;WORKFLOW,FINER
+10:00:00.000 (100000)|EXECUTION_STARTED
+10:00:00.000 (200000)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000001|OpportunityTrigger on Opportunity trigger event AfterUpdate for [0068Z0000A00001QAH]
+10:00:00.000 (250000)|METHOD_ENTRY|[10]|01q000000000ABC|OpportunityHandler.run(Id)
+10:00:00.000 (300000)|SOQL_EXECUTE_BEGIN|[11]|Aggregations:0|SELECT Id, Name, StageName FROM Opportunity WHERE Id = :tmpVar1
+10:00:00.000 (320000)|LIMIT_USAGE|[12]|SOQL|1|100
+10:00:00.000 (330000)|SOQL_EXECUTE_END|[13]|Rows:1
+10:00:00.000 (340000)|DML_BEGIN|[14]|Op:Update|Type:Opportunity|Rows:1
+10:00:00.000 (360000)|LIMIT_USAGE|[15]|DML|1|150
+10:00:00.000 (370000)|DML_END|[16]
+10:00:00.000 (380000)|METHOD_EXIT|[10]|01q000000000ABC|OpportunityHandler.run(Id)
+10:00:00.000 (390000)|CODE_UNIT_FINISHED|[EXTERNAL]|OpportunityTrigger on Opportunity trigger event AfterUpdate for [0068Z0000A00001QAH]
+10:00:00.500 (500000000)|LIMIT_USAGE_FOR_NS|(default)|
+  Number of SOQL queries: 1 out of 100
+  Number of query rows: 1 out of 50000
+  Number of DML statements: 1 out of 150
+  Number of DML rows: 1 out of 10000
+  Maximum CPU time: 280 out of 10000
+  Maximum heap size: 524288 out of 6291456
+  Maximum stack depth: 1 out of 1000
+  Number of callouts: 0 out of 100
+  Number of Email Invocations: 0 out of 10
+10:00:00.500 (500100000)|EXECUTION_FINISHED

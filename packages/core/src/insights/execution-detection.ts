@@ -6,31 +6,31 @@ import type {
   MixedDmlDetection,
   RecursiveTriggerDetection,
   SystemModeTransition,
-} from './types.js';
+} from "./types.js";
 
 // ─── Setup objects that cannot be mixed with non-setup objects ───────────────
 
 const SETUP_SOBJECTS = new Set([
-  'user',
-  'userrole',
-  'profile',
-  'permissionset',
-  'permissionsetassignment',
-  'groupmember',
-  'queuesobject',
-  'objectpermissions',
-  'fieldpermissions',
-  'setupentityaccess',
-  'permissionsetlicenseassign',
-  'userpermissionaccess',
-  'packagelicense',
-  'userpackagelicense',
+  "user",
+  "userrole",
+  "profile",
+  "permissionset",
+  "permissionsetassignment",
+  "groupmember",
+  "queuesobject",
+  "objectpermissions",
+  "fieldpermissions",
+  "setupentityaccess",
+  "permissionsetlicenseassign",
+  "userpermissionaccess",
+  "packagelicense",
+  "userpackagelicense",
 ]);
 
 function isSetupSObject(sObject: string): boolean {
   // Only match standard setup sObjects — custom objects (ending in __c) are never setup objects
   const normalized = sObject.toLowerCase().trim();
-  if (normalized.endsWith('__c')) return false;
+  if (normalized.endsWith("__c")) return false;
   return SETUP_SOBJECTS.has(normalized);
 }
 
@@ -43,26 +43,34 @@ function isSetupSObject(sObject: string): boolean {
  * @param databaseDml - Array of parsed DML entries
  * @returns MixedDmlDetection with detected flag, lists of setup/non-setup objects, and evidence entries
  */
-export function detectMixedDml(databaseDml: DatabaseDmlEntry[]): MixedDmlDetection {
-  const eventDml = databaseDml.filter((d): d is typeof d & { sObject: string } => d.source === 'event' && d.sObject !== null);
+export function detectMixedDml(
+  databaseDml: DatabaseDmlEntry[],
+): MixedDmlDetection {
+  const eventDml = databaseDml.filter(
+    (d): d is typeof d & { sObject: string } =>
+      d.source === "event" && d.sObject !== null,
+  );
   const setupEntries = eventDml.filter((d) => isSetupSObject(d.sObject));
   const nonSetupEntries = eventDml.filter((d) => !isSetupSObject(d.sObject));
 
   if (setupEntries.length === 0 || nonSetupEntries.length === 0) {
-    return { detected: false, setupObjects: [], nonSetupObjects: [], evidence: [] };
+    return {
+      detected: false,
+      setupObjects: [],
+      nonSetupObjects: [],
+      evidence: [],
+    };
   }
 
   return {
     detected: true,
     setupObjects: [...new Set(setupEntries.map((d) => d.sObject))],
     nonSetupObjects: [...new Set(nonSetupEntries.map((d) => d.sObject))],
-    evidence: [...setupEntries, ...nonSetupEntries]
-      .slice(0, 6)
-      .map((d) => ({
-        lineNumber: d.evidence.lineNumber,
-        timestampNs: d.evidence.timestampNs,
-        sObject: d.sObject,
-      })),
+    evidence: [...setupEntries, ...nonSetupEntries].slice(0, 6).map((d) => ({
+      lineNumber: d.evidence.lineNumber,
+      timestampNs: d.evidence.timestampNs,
+      sObject: d.sObject,
+    })),
   };
 }
 
@@ -73,7 +81,7 @@ function extractTriggerName(label: string): string {
   if (sfdc?.[1]) return sfdc[1];
   const triggerEvent = label.match(/^([^\s]+)\s+on\s+\S+\s+trigger/i);
   if (triggerEvent?.[1]) return triggerEvent[1];
-  return label.split(' ')[0] ?? label;
+  return label.split(" ")[0] ?? label;
 }
 
 /**
@@ -94,17 +102,28 @@ export function detectRecursiveTriggers(
     label: string;
     evidence?: { lineNumber: number | null; raw?: string | null };
   }>,
+  limit = 50,
+  evidenceLimit = 50,
 ): RecursiveTriggerDetection {
+  const normalizedLimit = Number.isFinite(limit)
+    ? Math.max(0, Math.floor(limit))
+    : 50;
+  const normalizedEvidenceLimit = Number.isFinite(evidenceLimit)
+    ? Math.max(0, Math.floor(evidenceLimit))
+    : 50;
   const triggerSpans = spans.filter(
     (s) =>
-      s.eventType === 'CODE_UNIT_STARTED' &&
-      (String(s.label || '').includes('trigger event') || String(s.label || '').startsWith('__sfdc_trigger/')),
+      s.eventType === "CODE_UNIT_STARTED" &&
+      (String(s.label || "").includes("trigger event") ||
+        String(s.label || "").startsWith("__sfdc_trigger/")),
   );
 
   // Group by trigger name
   const byName = new Map<string, typeof triggerSpans>();
   for (const span of triggerSpans) {
-    const key = extractTriggerName(String(span.label || '').trim()).toLowerCase();
+    const key = extractTriggerName(
+      String(span.label || "").trim(),
+    ).toLowerCase();
     if (!byName.has(key)) byName.set(key, []);
     byName.get(key)!.push(span);
   }
@@ -114,21 +133,8 @@ export function detectRecursiveTriggers(
     spans.map((s) => [s.id, s.parentId ?? null]),
   );
 
-  // Returns true if ancestorId is a proper ancestor of descendantId in the span tree.
-  // Includes a cycle guard to handle malformed parent chains.
-  function isAncestor(ancestorId: string, descendantId: string): boolean {
-    let current: string | null = parentOf.get(descendantId) ?? null;
-    const seen = new Set<string>();
-    while (current !== null) {
-      if (seen.has(current)) break; // cycle guard
-      seen.add(current);
-      if (current === ancestorId) return true;
-      current = parentOf.get(current) ?? null;
-    }
-    return false;
-  }
-
-  const recursive: RecursiveTriggerDetection['recursiveTriggers'] = [];
+  const recursive: RecursiveTriggerDetection["recursiveTriggers"] = [];
+  let totalCount = 0;
 
   for (const [, group] of byName) {
     if (group.length <= 1) continue;
@@ -138,42 +144,96 @@ export function detectRecursiveTriggers(
     // AfterDelete + BeforeInsert + AfterInsert for separate DML operations in the
     // same transaction) are NOT recursive — they are peers in the span tree, not
     // ancestor/descendant pairs.
+    const groupIds = new Set(group.map((span) => span.id));
     let hasNesting = false;
-    outer:
-    for (let i = 0; i < group.length; i++) {
-      for (let j = 0; j < group.length; j++) {
-        if (i === j) continue;
-        if (isAncestor(group[i]!.id, group[j]!.id)) {
+    for (const span of group) {
+      let current = parentOf.get(span.id) ?? null;
+      const seen = new Set<string>();
+      while (current !== null && !seen.has(current)) {
+        if (groupIds.has(current)) {
           hasNesting = true;
-          break outer;
+          break;
         }
+        seen.add(current);
+        current = parentOf.get(current) ?? null;
       }
+      if (hasNesting) break;
     }
 
     if (!hasNesting) continue; // normal multi-event firing — not a bug
+    totalCount += 1;
+    const insertionIndex = recursive.findIndex(
+      (entry) => group.length > entry.count,
+    );
+    if (
+      normalizedLimit === 0 ||
+      (recursive.length >= normalizedLimit && insertionIndex === -1)
+    ) {
+      continue;
+    }
 
-    const lineNumbers = group
-      .map((s) => Number(s?.evidence?.lineNumber))
-      .filter((n) => Number.isFinite(n) && n >= 1)
-      .filter((n, i, arr) => arr.indexOf(n) === i)
-      .sort((a, b) => a - b);
+    const retainedLineNumbers = new Set<number>();
+    const retainedRawLogLineTexts = new Set<string>();
+    let lineNumberEvidenceCount = 0;
+    let rawLogLineTextEvidenceCount = 0;
+    let lineNumbersTruncated = false;
+    let rawLogLineTextsTruncated = false;
+    for (const span of group) {
+      const lineNumber = Number(span.evidence?.lineNumber);
+      if (Number.isSafeInteger(lineNumber) && lineNumber >= 1) {
+        lineNumberEvidenceCount += 1;
+        if (!retainedLineNumbers.has(lineNumber)) {
+          if (retainedLineNumbers.size < normalizedEvidenceLimit) {
+            retainedLineNumbers.add(lineNumber);
+          } else {
+            lineNumbersTruncated = true;
+          }
+        }
+      }
+      const raw = span.evidence?.raw;
+      if (raw) {
+        rawLogLineTextEvidenceCount += 1;
+        const boundedRaw =
+          raw.length <= 2_000 ? raw : `${raw.slice(0, 1_999)}…`;
+        if (!retainedRawLogLineTexts.has(boundedRaw)) {
+          if (retainedRawLogLineTexts.size < normalizedEvidenceLimit) {
+            retainedRawLogLineTexts.add(boundedRaw);
+          } else {
+            rawLogLineTextsTruncated = true;
+          }
+        }
+      }
+    }
+    const lineNumbers = Array.from(retainedLineNumbers).sort((a, b) => a - b);
+    const rawLogLineTexts = Array.from(retainedRawLogLineTexts);
 
-    const rawLogLineTexts = group
-      .map((s) => s?.evidence?.raw ?? null)
-      .filter((r): r is string => r !== null && r.length > 0)
-      .filter((r, i, arr) => arr.indexOf(r) === i);
-
-    recursive.push({
-      triggerName: extractTriggerName(String(group[0]!.label || '').trim()),
+    const entry: RecursiveTriggerDetection["recursiveTriggers"][number] = {
+      triggerName: extractTriggerName(String(group[0]!.label || "").trim()),
       count: group.length,
       lineNumbers,
       rawLogLineTexts,
-    });
+      evidenceMeta: {
+        lineNumberCount: lineNumberEvidenceCount,
+        rawLogLineTextCount: rawLogLineTextEvidenceCount,
+        lineNumbersTruncated,
+        rawLogLineTextsTruncated,
+      },
+    };
+    if (insertionIndex === -1) recursive.push(entry);
+    else recursive.splice(insertionIndex, 0, entry);
+    if (recursive.length > normalizedLimit) recursive.pop();
   }
 
-  recursive.sort((a, b) => b.count - a.count);
-
-  return { detected: recursive.length > 0, recursiveTriggers: recursive };
+  return {
+    detected: totalCount > 0,
+    meta: {
+      totalCount,
+      truncated: totalCount > normalizedLimit,
+      limit: normalizedLimit,
+      evidenceLimit: normalizedEvidenceLimit,
+    },
+    recursiveTriggers: recursive,
+  };
 }
 
 // ─── System Mode Transitions ────────────────────────────────────────────────
@@ -195,15 +255,19 @@ export function extractSystemModeTransitions(
   const transitions: SystemModeTransition[] = [];
 
   for (const event of allEvents) {
-    if (event.type !== 'SYSTEM_MODE_ENTER' && event.type !== 'SYSTEM_MODE_EXIT') continue;
+    if (event.type !== "SYSTEM_MODE_ENTER" && event.type !== "SYSTEM_MODE_EXIT")
+      continue;
 
-    const isEntering = event.type === 'SYSTEM_MODE_ENTER';
-    const modeValue = String(event.text || '').trim().toLowerCase();
-    const isSystemMode = modeValue === 'true';
+    const isEntering = event.type === "SYSTEM_MODE_ENTER";
+    const modeValue = String(event.text || "")
+      .trim()
+      .toLowerCase();
+    const isSystemMode = modeValue === "true";
 
-    const enclosingSpanId = event.parentIdx !== null
-      ? spanIdByEventIdx.get(event.parentIdx) ?? null
-      : null;
+    const enclosingSpanId =
+      event.parentIdx !== null
+        ? (spanIdByEventIdx.get(event.parentIdx) ?? null)
+        : null;
 
     transitions.push({
       timestampNs: event.timestampNs,

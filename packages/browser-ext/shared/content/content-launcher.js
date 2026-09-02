@@ -3,7 +3,8 @@
 
   const href = String(window.location.href || "");
   const pathname = String(window.location.pathname || "");
-  const looksLikeLog = /\.log(?:$|[?#])/i.test(href) || /\.log$/i.test(pathname);
+  const looksLikeLog =
+    /\.log(?:$|[?#])/i.test(href) || /\.log$/i.test(pathname);
   if (!looksLikeLog) return;
   if (document.getElementById("apex-open-launcher")) return;
 
@@ -21,11 +22,43 @@
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  const MAX_CACHED_LOG_PAYLOADS = 5;
+  const MAX_LOG_BYTES = 25 * 1024 * 1024;
+
+  function isCachedLogPayloadKey(key) {
+    return /^apex-log-\d+$/.test(key);
+  }
+
+  async function pruneCachedLogPayloads(preserveKey) {
+    const stored = await chrome.storage.local.get(null);
+    const payloads = Object.entries(stored)
+      .filter(([key]) => isCachedLogPayloadKey(key) && key !== preserveKey)
+      .sort(
+        ([, left], [, right]) =>
+          Number(right?.cachedAt || 0) - Number(left?.cachedAt || 0),
+      );
+    const staleKeys = payloads
+      .slice(Math.max(0, MAX_CACHED_LOG_PAYLOADS - 1))
+      .map(([key]) => key);
+    if (staleKeys.length) {
+      await chrome.storage.local.remove(staleKeys);
+    }
+  }
+
   function looksLikeSalesforceDebugLog(text) {
-    const sample = String(text || "").split(/\r?\n/).slice(0, 160).join("\n");
+    const sample = String(text || "")
+      .split(/\r\n|\r|\n/)
+      .slice(0, 160)
+      .join("\n");
     if (!sample.trim()) return false;
-    const eventMatches = sample.match(/\b(CODE_UNIT_STARTED|USER_DEBUG|SOQL_EXECUTE_BEGIN|DML_BEGIN|EXECUTION_STARTED|LIMIT_USAGE_FOR_NS|CUMULATIVE_LIMIT_USAGE)\b/g) || [];
-    const timestampedLines = sample.match(/^\d{2}:\d{2}:\d{2}\.\d{1,3}\s*\(\d+\)\|[A-Z][A-Z0-9_]*\|/gm) || [];
+    const eventMatches =
+      sample.match(
+        /\b(CODE_UNIT_STARTED|USER_DEBUG|SOQL_EXECUTE_BEGIN|DML_BEGIN|EXECUTION_STARTED|LIMIT_USAGE_FOR_NS|CUMULATIVE_LIMIT_USAGE)\b/g,
+      ) || [];
+    const timestampedLines =
+      sample.match(
+        /^\d{2}:\d{2}:\d{2}\.\d{1,3}\s*\(\d+\)\|[A-Z][A-Z0-9_]*\|/gm,
+      ) || [];
     return timestampedLines.length >= 3 || eventMatches.length >= 3;
   }
 
@@ -33,16 +66,19 @@
   const fileName = pathname.split("/").filter(Boolean).pop() || "debug.log";
   const byteSize = new TextEncoder().encode(pageText).length;
   const isSalesforceLog = looksLikeSalesforceDebugLog(pageText);
+  const isOversized = byteSize > MAX_LOG_BYTES;
 
   // ─── Active logo SVG (inline data URI to avoid needing web_accessible_resources) ─
-  const logoSvgDataUri = "data:image/svg+xml," + encodeURIComponent(
-    '<svg viewBox="0 0 24 24" width="128" height="128" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="2" y="2" width="20" height="20" rx="3" fill="#ffffff" stroke="#0066ff" stroke-width="1.5"/>' +
-    '<line x1="6" y1="8" x2="18" y2="8" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>' +
-    '<line x1="6" y1="12" x2="18" y2="12" stroke="#0066ff" stroke-width="1.8" stroke-linecap="round"/>' +
-    '<line x1="6" y1="16" x2="18" y2="16" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>' +
-    '</svg>'
-  );
+  const logoSvgDataUri =
+    "data:image/svg+xml," +
+    encodeURIComponent(
+      '<svg viewBox="0 0 24 24" width="128" height="128" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="2" y="2" width="20" height="20" rx="3" fill="#ffffff" stroke="#0066ff" stroke-width="1.5"/>' +
+        '<line x1="6" y1="8" x2="18" y2="8" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<line x1="6" y1="12" x2="18" y2="12" stroke="#0066ff" stroke-width="1.8" stroke-linecap="round"/>' +
+        '<line x1="6" y1="16" x2="18" y2="16" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>' +
+        "</svg>",
+    );
 
   const root = document.createElement("div");
   root.id = "apex-open-launcher";
@@ -57,7 +93,8 @@
   root.style.borderRadius = "18px";
   root.style.background = "rgba(23,30,46,0.985)";
   root.style.boxShadow = "0 18px 40px rgba(0,0,0,0.35)";
-  root.style.fontFamily = "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  root.style.fontFamily =
+    "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   root.style.color = "#f8fafc";
   root.style.flexDirection = "column";
   root.style.alignItems = "flex-start";
@@ -86,15 +123,20 @@
   const detail = document.createElement("div");
   detail.style.fontSize = "13px";
   detail.style.lineHeight = "1.45";
-  detail.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+  detail.style.fontFamily =
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   detail.style.fontWeight = "500";
   detail.style.color = "#94a3b8";
 
-  if (!isSalesforceLog) {
+  if (!isSalesforceLog || isOversized) {
     root.style.border = "1px solid #b0892e";
     root.style.background = "rgba(59,43,18,0.985)";
-    label.textContent = "This .log file is not a Salesforce debug log";
-    detail.textContent = `${fileName} • ${formatBytes(byteSize)}. Apex Log Insights only auto-analyzes Salesforce debug logs with standard Salesforce event lines.`;
+    label.textContent = isOversized
+      ? "This log exceeds the 25 MiB input limit"
+      : "This .log file is not a Salesforce debug log";
+    detail.textContent = isOversized
+      ? `${fileName} • ${formatBytes(byteSize)}. The analyzer did not cache or copy this oversized page.`
+      : `${fileName} • ${formatBytes(byteSize)}. Apex Log Insights only auto-analyzes Salesforce debug logs with standard Salesforce event lines.`;
     detail.style.color = "#fde68a";
     brandRow.appendChild(logoImg);
     brandRow.appendChild(label);
@@ -113,7 +155,8 @@
     dismissBtn.style.lineHeight = "1";
     dismissBtn.style.cursor = "pointer";
     dismissBtn.style.boxShadow = "none";
-    dismissBtn.style.transition = "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease";
+    dismissBtn.style.transition =
+      "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease";
     dismissBtn.addEventListener("click", () => {
       root.remove();
     });
@@ -152,7 +195,8 @@
     button.style.lineHeight = "1";
     button.style.cursor = "pointer";
     button.style.boxShadow = "none";
-    button.style.transition = "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease";
+    button.style.transition =
+      "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease";
     return button;
   }
 
@@ -207,14 +251,20 @@
     const openAnalyzerWithStorageKey = () => {
       let target;
       try {
-        target = chrome.runtime.getURL(`app.html?storageKey=${encodeURIComponent(storageKey)}`);
+        target = chrome.runtime.getURL(
+          `app.html?storageKey=${encodeURIComponent(storageKey)}`,
+        );
       } catch (error) {
         stopProgress();
         root.style.border = "1px solid #b45353";
         root.style.background = "rgba(58,21,24,0.985)";
         label.textContent = "Apex Log Insights was reloaded";
-        detail.textContent = "The old content script lost its extension context. Refresh this page to reopen the analyzer.";
-        progress.textContent = error instanceof Error ? error.message : "Extension context invalidated.";
+        detail.textContent =
+          "The old content script lost its extension context. Refresh this page to reopen the analyzer.";
+        progress.textContent =
+          error instanceof Error
+            ? error.message
+            : "Extension context invalidated.";
         progress.style.color = "#f87171";
         openBtn.disabled = false;
         dismissBtn.disabled = false;
@@ -228,13 +278,18 @@
     const openAnalyzerWithSourceUrl = () => {
       let target;
       try {
-        target = chrome.runtime.getURL(`app.html?sourceUrl=${encodeURIComponent(href)}`);
+        target = chrome.runtime.getURL(
+          `app.html?sourceUrl=${encodeURIComponent(href)}`,
+        );
       } catch (error) {
         stopProgress();
         root.style.border = "1px solid #b45353";
         root.style.background = "rgba(58,21,24,0.985)";
         label.textContent = "Failed to open analyzer";
-        detail.textContent = error instanceof Error ? error.message : "Extension context invalidated.";
+        detail.textContent =
+          error instanceof Error
+            ? error.message
+            : "Extension context invalidated.";
         progress.textContent = "";
         progress.style.color = "#f87171";
         openBtn.disabled = false;
@@ -246,41 +301,55 @@
       return true;
     };
 
-    // Write payload immediately — sidebar scan happens later from app.html
-    chrome.storage.local.set({
-      [storageKey]: { logText: pageText, fileName, fileSizeBytes: byteSize, sourceHref: href },
-    }).then(() => {
-      // Verify the write completed before navigating away
-      return chrome.storage.local.get(storageKey);
-    }).then((result) => {
-      if (result[storageKey]) {
-        openAnalyzerWithStorageKey();
-      } else {
-        // Storage write didn't persist — fall back to source URL
-        if (!openAnalyzerWithSourceUrl()) {
-          throw new Error("Storage write failed to persist and source URL fallback unavailable.");
+    // Keep a bounded cache so refresh works without retaining every log ever opened.
+    pruneCachedLogPayloads(storageKey)
+      .then(() =>
+        chrome.storage.local.set({
+          [storageKey]: {
+            logText: pageText,
+            fileName,
+            fileSizeBytes: byteSize,
+            sourceHref: href,
+            cachedAt: Date.now(),
+          },
+        }),
+      )
+      .then(() => {
+        // Verify the write completed before navigating away
+        return chrome.storage.local.get(storageKey);
+      })
+      .then((result) => {
+        if (result[storageKey]) {
+          openAnalyzerWithStorageKey();
+        } else {
+          // Storage write didn't persist — fall back to source URL
+          if (!openAnalyzerWithSourceUrl()) {
+            throw new Error(
+              "Storage write failed to persist and source URL fallback unavailable.",
+            );
+          }
         }
-      }
-    }).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      const isQuotaError = /quota/i.test(message);
-      if (isQuotaError) {
-        label.textContent = "Large log detected";
-        detail.textContent = "Captured storage quota exceeded. Opening analyzer via source URL instead.";
-        progress.textContent = "Falling back to source URL launch…";
-        progress.style.color = "#60a5fa";
-        if (openAnalyzerWithSourceUrl()) return;
-      }
-      stopProgress();
-      root.style.border = "1px solid #b45353";
-      root.style.background = "rgba(58,21,24,0.985)";
-      label.textContent = "Failed to prepare log for analysis";
-      detail.textContent = message;
-      progress.textContent = "";
-      progress.style.color = "#f87171";
-      openBtn.disabled = false;
-      dismissBtn.disabled = false;
-    });
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        const isQuotaError = /quota/i.test(message);
+        if (isQuotaError) {
+          label.textContent = "Large log detected";
+          detail.textContent =
+            "Captured storage quota exceeded. Opening analyzer via source URL instead.";
+          progress.textContent = "Falling back to source URL launch…";
+          progress.style.color = "#60a5fa";
+          if (openAnalyzerWithSourceUrl()) return;
+        }
+        stopProgress();
+        root.style.border = "1px solid #b45353";
+        root.style.background = "rgba(58,21,24,0.985)";
+        label.textContent = "Failed to prepare log for analysis";
+        detail.textContent = message;
+        progress.textContent = "";
+        progress.style.color = "#f87171";
+        openBtn.disabled = false;
+        dismissBtn.disabled = false;
+      });
   });
-
 })();

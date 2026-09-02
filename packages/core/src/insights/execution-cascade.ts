@@ -1,114 +1,153 @@
 // Trigger cascade builder.
-//
-// Maps the tree of triggers invoked during execution, tracking which DML
-// operations fired which subsequent triggers and to what depth.
 
 import type {
-  FlatEvent,
   DatabaseDmlEntry,
+  FlatEvent,
   TriggerCascadeNode,
-} from './types.js';
+} from "./types.js";
 
 export interface TriggerCascadeResult {
   cascades: TriggerCascadeNode[];
   meta: {
     totalRootTriggers: number;
     maxDepth: number;
-    truncatedNodes: Array<{ parentId: string; totalChildren: number; shown: number }>;
+    truncatedNodes: Array<{
+      parentId: string;
+      totalChildren: number;
+      shown: number;
+    }>;
   };
 }
 
+const TRIGGER_CHILD_WINDOW_NS = 100_000_000;
+const MAX_CASCADE_DEPTH = 5;
+
+function isTriggerEvent(event: FlatEvent): boolean {
+  return (
+    event.type === "CODE_UNIT_STARTED" &&
+    (event.text.includes("trigger event") ||
+      event.text.startsWith("__sfdc_trigger/"))
+  );
+}
+
 /**
- * Builds a cascade tree showing trigger invocation chains from DML events and the root code unit.
- *
- * Analyzes trigger CODE_UNIT_STARTED events and DML operations to construct a tree where each DML operation can have
- * child triggers that were fired by that DML. Includes depth limiting, truncation tracking, and max-depth reporting for visualization.
- *
- * @param allEvents - Array of all parsed events from the log
- * @param databaseDml - Array of parsed DML entries with timestamps
- * @param childLimit - Maximum number of child triggers to show per DML (default 20, rest tracked as truncated)
- * @returns TriggerCascadeResult with cascade tree, metadata, and truncation information
+ * Builds a cascade tree using parser parentage as the ownership boundary.
+ * Timestamp proximity only associates a direct child trigger with the latest
+ * DML in its owning trigger; nested work is not duplicated under ancestors.
  */
 export function buildTriggerCascade(
   allEvents: FlatEvent[],
   databaseDml: DatabaseDmlEntry[],
   childLimit: number = 20,
 ): TriggerCascadeResult {
-  const triggerEvents = allEvents.filter(
-    (event) => event.type === 'CODE_UNIT_STARTED' && (
-      String(event.text || '').includes('trigger event') ||
-      String(event.text || '').startsWith('__sfdc_trigger/')
-    ),
-  );
+  const triggerEvents = allEvents.filter(isTriggerEvent);
+  if (triggerEvents.length === 0) {
+    return {
+      cascades: [],
+      meta: { totalRootTriggers: 0, maxDepth: 0, truncatedNodes: [] },
+    };
+  }
 
-  if (triggerEvents.length === 0) return { cascades: [], meta: { totalRootTriggers: 0, maxDepth: 0, truncatedNodes: [] } };
-
-  const parentByIdx = new Map<number, number | null>(
-    allEvents.map((event) => [event.idx, event.parentIdx]),
-  );
+  const eventByIdx = new Map(allEvents.map((event) => [event.idx, event]));
   const triggerIdxSet = new Set(triggerEvents.map((event) => event.idx));
-  const truncatedNodes: Array<{ parentId: string; totalChildren: number; shown: number }> = [];
-  let maxDepthReached = 0;
+  const nearestTriggerAncestor = new Map<number, number | null>();
 
-  const isTriggerDescendantOf = (candidateIdx: number, ancestorIdx: number): boolean => {
-    let cursor = parentByIdx.get(candidateIdx) ?? null;
-    const seen = new Set<number>();
-    while (cursor !== null) {
-      if (seen.has(cursor)) break;
-      seen.add(cursor);
-      if (cursor === ancestorIdx) return true;
-      cursor = parentByIdx.get(cursor) ?? null;
+  const findNearestTriggerAncestor = (event: FlatEvent): number | null => {
+    if (nearestTriggerAncestor.has(event.idx)) {
+      return nearestTriggerAncestor.get(event.idx) ?? null;
     }
-    return false;
+
+    const traversed: number[] = [];
+    const seen = new Set<number>();
+    let parentIdx = event.parentIdx;
+    let owner: number | null = null;
+    while (parentIdx !== null && !seen.has(parentIdx)) {
+      seen.add(parentIdx);
+      if (triggerIdxSet.has(parentIdx)) {
+        owner = parentIdx;
+        break;
+      }
+      if (nearestTriggerAncestor.has(parentIdx)) {
+        owner = nearestTriggerAncestor.get(parentIdx) ?? null;
+        break;
+      }
+      traversed.push(parentIdx);
+      parentIdx = eventByIdx.get(parentIdx)?.parentIdx ?? null;
+    }
+    nearestTriggerAncestor.set(event.idx, owner);
+    for (const idx of traversed) nearestTriggerAncestor.set(idx, owner);
+    return owner;
   };
 
-  const dmlByWindow = databaseDml
-    .filter((d) => d.source === 'event' && d.evidence.timestampNs !== null)
-    .sort((a, b) => (a.evidence.timestampNs ?? 0) - (b.evidence.timestampNs ?? 0));
+  for (const event of allEvents) findNearestTriggerAncestor(event);
+
+  const childTriggersByOwner = new Map<number, FlatEvent[]>();
+  for (const trigger of triggerEvents) {
+    const owner = findNearestTriggerAncestor(trigger);
+    if (owner === null) continue;
+    const children = childTriggersByOwner.get(owner) ?? [];
+    children.push(trigger);
+    childTriggersByOwner.set(owner, children);
+  }
+
+  const eventDml = databaseDml.filter((entry) => entry.source === "event");
+  const dmlEvents = allEvents.filter((event) => event.type === "DML_BEGIN");
+  const dmlByOwner = new Map<number, DatabaseDmlEntry[]>();
+  for (let i = 0; i < Math.min(eventDml.length, dmlEvents.length); i += 1) {
+    const owner = findNearestTriggerAncestor(dmlEvents[i]!);
+    if (owner === null) continue;
+    const entries = dmlByOwner.get(owner) ?? [];
+    entries.push(eventDml[i]!);
+    dmlByOwner.set(owner, entries);
+  }
+
+  const truncatedNodes: TriggerCascadeResult["meta"]["truncatedNodes"] = [];
+  let maxDepthReached = 0;
 
   const buildNode = (
     triggerEvent: FlatEvent,
     depth: number,
-    visitedTriggerIdx: Set<number>,
+    visited: Set<number>,
   ): TriggerCascadeNode => {
     maxDepthReached = Math.max(maxDepthReached, depth);
-    const startNs = triggerEvent.timestampNs;
-    const endNs = triggerEvent.endTimestampNs ?? triggerEvent.timestampNs;
-    const nextVisited = new Set(visitedTriggerIdx);
-    nextVisited.add(triggerEvent.idx);
+    const nextVisited = new Set(visited).add(triggerEvent.idx);
+    const ownedDml = [...(dmlByOwner.get(triggerEvent.idx) ?? [])].sort(
+      (a, b) =>
+        (a.evidence.timestampNs ?? Number.MAX_SAFE_INTEGER) -
+        (b.evidence.timestampNs ?? Number.MAX_SAFE_INTEGER),
+    );
+    const directChildren = [
+      ...(childTriggersByOwner.get(triggerEvent.idx) ?? []),
+    ].sort((a, b) => a.timestampNs - b.timestampNs);
 
-    const dmlInTrigger = dmlByWindow.filter((d) => {
-      const ts = d.evidence.timestampNs ?? 0;
-      return ts >= startNs && ts <= endNs;
-    });
+    const childrenByDmlId = new Map<string, FlatEvent[]>();
+    let latestDmlIndex = -1;
+    for (const child of directChildren) {
+      if (nextVisited.has(child.idx)) continue;
+      while (
+        latestDmlIndex + 1 < ownedDml.length &&
+        (ownedDml[latestDmlIndex + 1]!.evidence.timestampNs ??
+          Number.MAX_SAFE_INTEGER) < child.timestampNs
+      ) {
+        latestDmlIndex += 1;
+      }
+      const dml = ownedDml[latestDmlIndex];
+      const dmlTimestamp = dml?.evidence.timestampNs ?? null;
+      if (
+        !dml ||
+        dmlTimestamp === null ||
+        child.timestampNs > dmlTimestamp + TRIGGER_CHILD_WINDOW_NS
+      ) {
+        continue;
+      }
+      const children = childrenByDmlId.get(dml.id) ?? [];
+      children.push(child);
+      childrenByDmlId.set(dml.id, children);
+    }
 
-    const children: TriggerCascadeNode[] = [];
-
-    for (const dml of dmlInTrigger) {
-      const dmlNode: TriggerCascadeNode = {
-        id: dml.id,
-        label: `${dml.operation ?? 'DML'} on ${dml.sObject ?? 'unknown'}`,
-        type: 'dml',
-        sObject: dml.sObject,
-        operation: dml.operation,
-        namespace: dml.namespace,
-        durationMs: dml.durationMs,
-        children: [],
-        depth: depth + 1,
-      };
-
-      const dmlTs = dml.evidence.timestampNs ?? 0;
-      const maxTs = Math.min(endNs, dmlTs + 100_000_000);
-      const allTriggered = triggerEvents
-        .filter((candidate) => {
-          if (nextVisited.has(candidate.idx)) return false;
-          if (candidate.timestampNs <= dmlTs || candidate.timestampNs > maxTs) return false;
-          return isTriggerDescendantOf(candidate.idx, triggerEvent.idx);
-        })
-        .sort((a, b) => a.timestampNs - b.timestampNs);
-
-      const triggeredByDml = allTriggered.slice(0, childLimit);
-
+    const children = ownedDml.map((dml) => {
+      const allTriggered = childrenByDmlId.get(dml.id) ?? [];
+      const shownTriggers = allTriggered.slice(0, childLimit);
       if (allTriggered.length > childLimit) {
         truncatedNodes.push({
           parentId: dml.id,
@@ -116,44 +155,46 @@ export function buildTriggerCascade(
           shown: childLimit,
         });
       }
-
-      for (const childTrigger of triggeredByDml) {
-        if (depth < 5) {
-          dmlNode.children.push(buildNode(childTrigger, depth + 2, nextVisited));
-        }
-      }
-
-      children.push(dmlNode);
-    }
+      return {
+        id: dml.id,
+        label: `${dml.operation ?? "DML"} on ${dml.sObject ?? "unknown"}`,
+        type: "dml" as const,
+        sObject: dml.sObject,
+        operation: dml.operation,
+        namespace: dml.namespace,
+        durationMs: dml.durationMs,
+        children:
+          depth < MAX_CASCADE_DEPTH
+            ? shownTriggers.map((child) =>
+                buildNode(child, depth + 2, nextVisited),
+              )
+            : [],
+        depth: depth + 1,
+      };
+    });
 
     return {
       id: `trigger-${triggerEvent.idx + 1}`,
-      label: triggerEvent.text || 'Trigger',
-      type: 'trigger',
+      label: triggerEvent.text || "Trigger",
+      type: "trigger",
       sObject: null,
       operation: null,
       namespace: triggerEvent.namespace,
-      durationMs: triggerEvent.durationTotalNs !== null
-        ? Math.round((triggerEvent.durationTotalNs / 1_000_000) * 1000) / 1000
-        : null,
+      durationMs:
+        triggerEvent.durationTotalNs !== null
+          ? Math.round((triggerEvent.durationTotalNs / 1_000_000) * 1000) / 1000
+          : null,
       children,
       depth,
     };
   };
 
   const rootTriggers = triggerEvents.filter(
-    (event) => !Array.from(triggerIdxSet).some(
-      (ancestorIdx) => ancestorIdx !== event.idx && isTriggerDescendantOf(event.idx, ancestorIdx),
-    ),
+    (event) => findNearestTriggerAncestor(event) === null,
   );
-
   const cascades = rootTriggers
     .sort((a, b) => a.timestampNs - b.timestampNs)
-    .map((event) => {
-      if (!event) return null;
-      return buildNode(event, 0, new Set<number>());
-    })
-    .filter((node): node is TriggerCascadeNode => node !== null);
+    .map((event) => buildNode(event, 0, new Set<number>()));
 
   return {
     cascades,

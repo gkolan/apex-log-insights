@@ -1,0 +1,117 @@
+{
+  "name": "apex-log-insights",
+  "displayName": "Apex Log Insights",
+  "version": "1.2.0",
+  "description": "Analyze Salesforce Apex debug logs locally in Visual Studio Code.",
+  "publisher": "apex-log-insights",
+  "author": "Gautam Kolan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gkolan/apex-log-insights.git",
+    "directory": "packages/vscode-ext"
+  },
+  "homepage": "https://github.com/gkolan/apex-log-insights/tree/main/packages/vscode-ext#readme",
+  "bugs": {
+    "url": "https://github.com/gkolan/apex-log-insights/issues"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "icon": "dist/webview/icons/icon-active-128.png",
+  "keywords": [
+    "salesforce",
+    "apex",
+    "debug log",
+    "log analysis"
+  ],
+  "main": "./dist/extension.cjs",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Apex Log Insights reads only a user-selected log and runs packaged parser code."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Virtual workspaces are not supported in the first release."
+    }
+  },
+  "activationEvents": [
+    "onCommand:apexLogInsights.analyzeActiveLog",
+    "onCommand:apexLogInsights.analyzeLogFile",
+    "onCommand:apexLogInsights.refreshAnalysis",
+    "onLanguage:log"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "apexLogInsights.analyzeActiveLog",
+        "title": "Apex Log Insights: Analyze Active Log",
+        "shortTitle": "Analyze with Apex Log Insights"
+      },
+      {
+        "command": "apexLogInsights.analyzeLogFile",
+        "title": "Apex Log Insights: Analyze Log File…"
+      },
+      {
+        "command": "apexLogInsights.refreshAnalysis",
+        "title": "Apex Log Insights: Refresh Analysis"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "apexLogInsights.analyzeActiveLog",
+          "when": "resourceFilename =~ /\\.log$/i",
+          "group": "navigation@50"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "apexLogInsights.analyzeActiveLog",
+          "when": "resourceFilename =~ /\\.log$/i",
+          "group": "navigation@50"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "apexLogInsights.analyzeActiveLog",
+          "when": "resourceFilename =~ /\\.log$/i",
+          "group": "navigation@50"
+        }
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.cjs && esbuild src/parser-worker.ts --bundle --platform=node --format=cjs --outfile=dist/parser-worker.cjs && node scripts/assemble-webview.mjs",
+    "dev": "esbuild src/extension.ts src/parser-worker.ts --bundle --platform=node --format=cjs --external:vscode --outdir=dist --out-extension:.js=.cjs --sourcemap --watch",
+    "typecheck": "tsc --noEmit",
+    "package:vsix": "vsce package --no-dependencies --out apex-log-insights.vsix",
+    "test:host:build": "esbuild src/test/run-tests.ts src/test/suite.ts --bundle --platform=node --format=cjs --external:vscode --outdir=.test-dist --out-extension:.js=.cjs",
+    "test:host": "pnpm test:host:build && node .test-dist/run-tests.cjs"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.96.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.2",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@apex-log-insights/core": "workspace:*"
+  }
+}

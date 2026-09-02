@@ -8,8 +8,9 @@ import type {
   ParsedExplainPlan,
   ParsedCumulativeEntry,
   ParsedCumulativeDmlEntry,
-} from './types.js';
-import { isRecord } from './utils.js';
+} from "./types.js";
+import { parseSafeIntegerToken, splitLogFields } from "../logFields.js";
+import { isRecord } from "./utils.js";
 
 // ─── Variable + Explain Plan Parsing ─────────────────────────────────────────
 
@@ -23,9 +24,80 @@ import { isRecord } from './utils.js';
  * @returns SObject name from the FROM clause, or null if not found
  */
 export function extractTargetObject(query: string | null): string | null {
-  const q = String(query || '');
-  const m = q.match(/\bFROM\s+([a-zA-Z0-9_]+)/i);
-  return m?.[1] ?? null;
+  const q = String(query || "");
+  let depth = 0;
+  let quote: "'" | '"' | null = null;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = 0; index < q.length; index += 1) {
+    const char = q[index]!;
+    const next = q[index + 1];
+
+    if (lineComment) {
+      if (char === "\n" || char === "\r") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (char === "*" && next === "/") {
+        blockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+    if (quote) {
+      if (char === "\\") {
+        index += 1;
+      } else if (char === quote) {
+        // Accept doubled SQL-style quote escaping as well as Apex backslashes.
+        if (next === quote) index += 1;
+        else quote = null;
+      }
+      continue;
+    }
+
+    if ((char === "'" || char === '"') && !quote) {
+      quote = char;
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+    if (char === "/" && next === "/") {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth !== 0 || q.slice(index, index + 4).toUpperCase() !== "FROM") {
+      continue;
+    }
+
+    const before = q[index - 1];
+    const after = q[index + 4];
+    if (
+      (before && /[A-Z0-9_]/i.test(before)) ||
+      (after && /[A-Z0-9_]/i.test(after))
+    ) {
+      continue;
+    }
+
+    let objectStart = index + 4;
+    while (/\s/.test(q[objectStart] || "")) objectStart += 1;
+    const objectMatch = q.slice(objectStart).match(/^[A-Z_][A-Z0-9_]*/i);
+    return objectMatch?.[0] ?? null;
+  }
+
+  return null;
 }
 
 /**
@@ -38,7 +110,7 @@ export function extractTargetObject(query: string | null): string | null {
  * @returns ParsedExplainPlan with availability, indexing status, and metrics
  */
 export function parseExplainPlan(text: string): ParsedExplainPlan {
-  const raw = String(text || '');
+  const raw = String(text || "");
   if (/No explain plan is available/i.test(raw)) {
     return {
       available: false,
@@ -56,26 +128,38 @@ export function parseExplainPlan(text: string): ParsedExplainPlan {
   const indexMatch = raw.match(/Index on [^:]+ : \[([^\]]+)\]/i);
   if (indexMatch?.[1]) {
     out.indexFields = indexMatch[1]
-      .split(',')
+      .split(",")
       .map((f) => f.trim())
       .filter(Boolean);
   }
 
-  const cardinality = raw.match(/cardinality:\s*(\d+)/i)?.[1];
-  const sobjectCardinality = raw.match(/sobjectCardinality:\s*(\d+)/i)?.[1];
-  const relativeCost = raw.match(/relativeCost\s+(\d+(?:\.\d+)?)/i)?.[1];
+  const metricToken = (label: string): string | null => {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const token = raw.match(
+      new RegExp(
+        `\\b${escapedLabel}\\s*:?\\s*([^\\s;{}\\[\\]]+?)(?=,\\s*(?:[A-Za-z_]|$)|\\s|;|[{}\\[\\]]|$)`,
+        "i",
+      ),
+    )?.[1];
+    return token ?? null;
+  };
 
-  if (cardinality !== undefined) {
-    const v = Number(cardinality);
-    if (Number.isFinite(v)) out.cardinality = v;
-  }
-  if (sobjectCardinality !== undefined) {
-    const v = Number(sobjectCardinality);
-    if (Number.isFinite(v)) out.sobjectCardinality = v;
-  }
-  if (relativeCost !== undefined) {
-    const v = Number(relativeCost);
-    if (Number.isFinite(v)) out.relativeCost = v;
+  const cardinality = parseSafeIntegerToken(metricToken("cardinality"));
+  const sobjectCardinality = parseSafeIntegerToken(
+    metricToken("sobjectCardinality"),
+  );
+  const relativeCostToken = metricToken("relativeCost");
+
+  if (cardinality !== null) out.cardinality = cardinality;
+  if (sobjectCardinality !== null) out.sobjectCardinality = sobjectCardinality;
+  if (
+    relativeCostToken !== null &&
+    /^(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i.test(relativeCostToken)
+  ) {
+    const relativeCost = Number(relativeCostToken);
+    if (Number.isFinite(relativeCost) && relativeCost >= 0) {
+      out.relativeCost = relativeCost;
+    }
   }
 
   return out;
@@ -91,21 +175,36 @@ export function parseExplainPlan(text: string): ParsedExplainPlan {
  * @param event - FlatEvent of type VARIABLE_ASSIGNMENT
  * @returns ParsedVariableAssignment with parsed structure, or null if parsing fails
  */
-export function parseVariableAssignment(event: FlatEvent): ParsedVariableAssignment | null {
-  if (event.type !== 'VARIABLE_ASSIGNMENT') return null;
+export function parseVariableAssignment(
+  event: FlatEvent,
+): ParsedVariableAssignment | null {
+  if (event.type !== "VARIABLE_ASSIGNMENT") return null;
 
-  const parts = String(event.text || '')
-    .split('|')
-    .map((p) => p.trim());
-
-  const variableName = parts[0] || '';
-  const rawValue = parts[1] || '';
+  const logParts = splitLogFields(String(event.logLine || ""), 5);
+  const hasRawTokens =
+    logParts[1] === "VARIABLE_ASSIGNMENT" && logParts.length >= 5;
+  const variableName = hasRawTokens
+    ? logParts[3]?.trim() || ""
+    : String(event.text || "")
+        .split("|", 1)[0]
+        ?.trim() || "";
+  let rawValue: string;
+  if (hasRawTokens) {
+    rawValue = (logParts[4] || "").replace(/\|0x[\da-f]+\s*$/i, "").trim();
+  } else {
+    const separator = String(event.text || "").indexOf("|");
+    rawValue = separator >= 0 ? event.text.slice(separator + 1).trim() : "";
+  }
   if (!variableName) return null;
 
   let parsedValue: unknown = rawValue;
-  if (rawValue === 'null') {
+  if (rawValue === "null") {
     parsedValue = null;
-  } else if (rawValue.startsWith('{') || rawValue.startsWith('[') || rawValue.startsWith('"')) {
+  } else if (
+    rawValue.startsWith("{") ||
+    rawValue.startsWith("[") ||
+    rawValue.startsWith('"')
+  ) {
     try {
       parsedValue = JSON.parse(rawValue);
     } catch {
@@ -115,7 +214,8 @@ export function parseVariableAssignment(event: FlatEvent): ParsedVariableAssignm
 
   let isEmptyCollection = false;
   if (Array.isArray(parsedValue)) isEmptyCollection = parsedValue.length === 0;
-  else if (isRecord(parsedValue)) isEmptyCollection = Object.keys(parsedValue).length === 0;
+  else if (isRecord(parsedValue))
+    isEmptyCollection = Object.keys(parsedValue).length === 0;
 
   return {
     variableName,
@@ -134,38 +234,65 @@ export function parseVariableAssignment(event: FlatEvent): ParsedVariableAssignm
  * @param event - FlatEvent of type VARIABLE_SCOPE_BEGIN
  * @returns ParsedVariableScope with variable name and type, or null if parsing fails
  */
-export function parseVariableScope(event: FlatEvent): ParsedVariableScope | null {
-  if (event.type !== 'VARIABLE_SCOPE_BEGIN') return null;
-  const parts = String(event.text || '')
-    .split('|')
-    .map((p) => p.trim());
-  const variableName = parts[0] || '';
-  const typeName = parts[1] || '';
+export function parseVariableScope(
+  event: FlatEvent,
+): ParsedVariableScope | null {
+  if (event.type !== "VARIABLE_SCOPE_BEGIN") return null;
+  const logParts = splitLogFields(String(event.logLine || ""), 6);
+  const hasRawTokens =
+    logParts[1] === "VARIABLE_SCOPE_BEGIN" && logParts.length >= 5;
+  const displayParts = splitLogFields(String(event.text || ""), 3);
+  const variableName = hasRawTokens
+    ? logParts[3]?.trim() || ""
+    : displayParts[0]?.trim() || "";
+  const typeName = hasRawTokens
+    ? logParts[4]?.trim() || ""
+    : displayParts[1]?.trim() || "";
   if (!variableName || !typeName) return null;
   return { variableName, typeName };
 }
 
 // ─── Cumulative Profiling ─────────────────────────────────────────────────────
 
-function parseCumulativeProfilingLine(line: string): ParsedCumulativeEntry | null {
-  const executionMatch = line.match(/executed\s+(\d+)\s+times?\s+in\s+(\d+)\s+ms/i);
+function parseCumulativeProfilingLine(
+  line: string,
+): ParsedCumulativeEntry | null {
+  const executionMatch = line.match(
+    /executed\s+(\S+)\s+times?\s+in\s+(\S+)\s+ms/i,
+  );
   if (!executionMatch) return null;
 
-  const executionCount = Number(executionMatch[1]);
-  const timeMs = Number(executionMatch[2]);
-  const classMatch = line.match(/Class\.([^:]+):\s*line\s*(\d+)/);
+  const executionCount = parseSafeIntegerToken(executionMatch[1]);
+  const timeMs = parseSafeIntegerToken(executionMatch[2]);
+  const classMatch = line.match(/Class\.([^:]+):\s*line\s*([^,\s:]+)/);
+  const lineNumber = classMatch?.[2]
+    ? parseSafeIntegerToken(classMatch[2])
+    : null;
+
+  if (
+    executionCount === null ||
+    timeMs === null ||
+    (classMatch?.[2] && lineNumber === null)
+  ) {
+    return null;
+  }
 
   return {
     className: classMatch?.[1] ?? null,
-    lineNumber: classMatch?.[2] ? Number(classMatch[2]) : null,
+    lineNumber,
     executionCount,
     timeMs,
     rawLine: line.trim(),
   };
 }
 
-function parseCumulativeDmlOperation(line: string): { operation: string | null; sObject: string | null } {
-  const dmlMatch = line.match(/:\s*(Insert|Update|Upsert|Delete|Undelete|Merge):\s*([^:]+):\s*executed/i);
+function parseCumulativeDmlOperation(line: string): {
+  operation: string | null;
+  sObject: string | null;
+} {
+  const dmlMatch = line.match(
+    /:\s*(Insert|Update|Upsert|Delete|Undelete|Merge):\s*([^:]+):\s*executed/i,
+  );
   if (!dmlMatch) return { operation: null, sObject: null };
   return {
     operation: dmlMatch[1] ?? null,
@@ -193,10 +320,10 @@ export function collectCumulativeProfilingSections(allEvents: FlatEvent[]): {
     soqlOperations: [] as ParsedCumulativeEntry[],
   };
 
-  const profilingEvents = allEvents.filter((event) => event.type === 'CUMULATIVE_PROFILING');
-  for (const event of profilingEvents) {
-    const lines = String(event.text || '')
-      .split('\n')
+  for (const event of allEvents) {
+    if (event.type !== "CUMULATIVE_PROFILING") continue;
+    const lines = String(event.text || "")
+      .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
 
@@ -204,7 +331,7 @@ export function collectCumulativeProfilingSections(allEvents: FlatEvent[]): {
     const header = lines[0]!.toLowerCase();
     const bodyLines = lines.slice(1);
 
-    if (header.startsWith('dml operations')) {
+    if (header.startsWith("dml operations")) {
       for (const line of bodyLines) {
         const parsed = parseCumulativeProfilingLine(line);
         if (!parsed) continue;
@@ -218,7 +345,7 @@ export function collectCumulativeProfilingSections(allEvents: FlatEvent[]): {
       continue;
     }
 
-    if (header.startsWith('method invocations')) {
+    if (header.startsWith("method invocations")) {
       for (const line of bodyLines) {
         const parsed = parseCumulativeProfilingLine(line);
         if (parsed) out.methodInvocations.push(parsed);
@@ -226,7 +353,7 @@ export function collectCumulativeProfilingSections(allEvents: FlatEvent[]): {
       continue;
     }
 
-    if (header.startsWith('soql operations')) {
+    if (header.startsWith("soql operations")) {
       for (const line of bodyLines) {
         const parsed = parseCumulativeProfilingLine(line);
         if (parsed) out.soqlOperations.push(parsed);

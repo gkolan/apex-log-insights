@@ -3,7 +3,7 @@
  */
 
 // Parser
-export { ApexLogParser, DebugLevel, parse } from './ApexLogParser.js';
+export { ApexLogParser, DebugLevel, parse } from "./ApexLogParser.js";
 
 // Types
 export type {
@@ -17,13 +17,19 @@ export type {
   LogCategory,
   LogEventType,
   LogIssue,
+  ParsingDiagnostic,
   LogLineConstructor,
   LogSubCategory,
   SelfTotal,
-} from './types.js';
+} from "./types.js";
 
 // Constants
-export { ALL_LOG_CATEGORIES, DEBUG_CATEGORY, LOG_CATEGORY } from './types.js';
+export {
+  ALL_LOG_CATEGORIES,
+  DEBUG_CATEGORY,
+  LOG_CATEGORY,
+  LOG_EVENT_NAMES,
+} from "./types.js";
 
 // Events - classes and utilities used by consumers
 export {
@@ -38,7 +44,7 @@ export {
   parseObjectNamespace,
   parseRows,
   parseVfNamespace,
-} from './LogEvents.js';
+} from "./LogEvents.js";
 
 // Mapping
-export { getLogEventClass, lineTypeMap } from './LogLineMapping.js';
+export { getLogEventClass, lineTypeMap } from "./LogLineMapping.js";

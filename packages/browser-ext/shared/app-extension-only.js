@@ -8,6 +8,7 @@
 // === Extension-only constants ===
 
 const EXTENSION_MAX_RECOMMENDED_BYTES = 20 * 1024 * 1024;
+const EXTENSION_MAX_LOG_BYTES = 25 * 1024 * 1024;
 
 // === Extension-only DOM element refs ===
 
@@ -16,23 +17,26 @@ const extensionFileInput = document.getElementById("extensionFileInput");
 const extensionOpenFileBtn = document.getElementById("extensionOpenFileBtn");
 const extensionLoadStatus = document.getElementById("extensionLoadStatus");
 const extensionLoadDetails = document.getElementById("extensionLoadDetails");
-const extensionLoadingPlaceholder = document.getElementById("extensionLoadingPlaceholder");
+const extensionLoadingPlaceholder = document.getElementById(
+  "extensionLoadingPlaceholder",
+);
 
 // === Extension-only state ===
 
 let extensionStatusInterval = null;
 let currentExtensionLoadMeta = {};
+let extensionAutoLoadFailed = false;
 
 // === Extension-only helpers ===
 
 /** Safely coerce any value to an array. */
-function toArray(value) {
+function extensionArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
 // === Extension UI functions ===
 
-function formatBytes(bytes) {
+function formatExtensionFileSize(bytes) {
   const size = Number(bytes || 0);
   if (!Number.isFinite(size) || size <= 0) return "Unknown";
   if (size < 1024) return `${size} B`;
@@ -48,17 +52,27 @@ function setExtensionLoadDetails(meta = {}) {
   if (!extensionLoadDetails) return;
   const cards = [
     ["File", currentExtensionLoadMeta.fileName || "Waiting for input"],
-    ["Source", currentExtensionLoadMeta.source || "Auto-detect or manual picker"],
+    [
+      "Source",
+      currentExtensionLoadMeta.source || "Auto-detect or manual picker",
+    ],
     ["Format", currentExtensionLoadMeta.format || "Not checked yet"],
     ["Size", currentExtensionLoadMeta.sizeLabel || "Unknown"],
     ["Stage", currentExtensionLoadMeta.stage || "Idle"],
   ];
-  setHtml(extensionLoadDetails, cards.map(([title, value]) => `
+  setHtml(
+    extensionLoadDetails,
+    cards
+      .map(
+        ([title, value]) => `
     <div class="reportCard">
       <div class="reportCardTitle">${escapeHtml(title)}</div>
       <div class="reportCardText">${escapeHtml(value)}</div>
     </div>
-  `).join(""));
+  `,
+      )
+      .join(""),
+  );
 }
 
 function setExtensionStatus(message) {
@@ -95,14 +109,37 @@ function setExtensionEmptyState(isEmpty) {
     document.body.classList.remove("extension-shell-loading");
   }
   if (extensionLoadingPlaceholder) {
-    extensionLoadingPlaceholder.hidden = !(isEmpty && document.body.classList.contains("extension-shell-loading"));
+    extensionLoadingPlaceholder.hidden = !(
+      isEmpty && document.body.classList.contains("extension-shell-loading")
+    );
+  }
+}
+
+function normalizeExtensionLogUrl(value) {
+  try {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const source = new URL(raw);
+    if (!new Set(["https:", "http:", "file:"]).has(source.protocol)) {
+      return "";
+    }
+    if (
+      source.username ||
+      source.password ||
+      !/\.log$/i.test(source.pathname)
+    ) {
+      return "";
+    }
+    return source.toString();
+  } catch {
+    return "";
   }
 }
 
 function getExtensionSourceUrl() {
   try {
     const params = new URLSearchParams(window.location.search || "");
-    return String(params.get("sourceUrl") || "").trim();
+    return normalizeExtensionLogUrl(params.get("sourceUrl"));
   } catch {
     return "";
   }
@@ -111,7 +148,12 @@ function getExtensionSourceUrl() {
 function getExtensionStorageKey() {
   try {
     const params = new URLSearchParams(window.location.search || "");
-    return String(params.get("storageKey") || "").trim();
+    const key = String(params.get("storageKey") || "").trim();
+    return /^(?:apex-log-\d+-[a-z0-9]{6}|apex-new-tab-state-\d+-[a-z0-9]{8})$/.test(
+      key,
+    )
+      ? key
+      : "";
   } catch {
     return "";
   }
@@ -125,10 +167,19 @@ function setExtensionBannerFileName(fileName) {
 }
 
 function looksLikeSalesforceDebugLogText(text) {
-  const sample = String(text || "").split(/\r?\n/).slice(0, 200).join("\n");
+  const sample = String(text || "")
+    .split(/\r\n|\r|\n/)
+    .slice(0, 200)
+    .join("\n");
   if (!sample.trim()) return false;
-  const timestampedLines = sample.match(/^\d{2}:\d{2}:\d{2}\.\d{1,3}\s*\(\d+\)\|[A-Z][A-Z0-9_]*\|/gm) || [];
-  const knownEvents = sample.match(/\b(CODE_UNIT_STARTED|USER_DEBUG|SOQL_EXECUTE_BEGIN|DML_BEGIN|EXECUTION_STARTED|LIMIT_USAGE_FOR_NS|CUMULATIVE_LIMIT_USAGE)\b/g) || [];
+  const timestampedLines =
+    sample.match(
+      /^\d{2}:\d{2}:\d{2}\.\d{1,3}\s*\(\d+\)\|[A-Z][A-Z0-9_]*\|/gm,
+    ) || [];
+  const knownEvents =
+    sample.match(
+      /\b(CODE_UNIT_STARTED|USER_DEBUG|SOQL_EXECUTE_BEGIN|DML_BEGIN|EXECUTION_STARTED|LIMIT_USAGE_FOR_NS|CUMULATIVE_LIMIT_USAGE)\b/g,
+    ) || [];
   return timestampedLines.length >= 3 || knownEvents.length >= 3;
 }
 
@@ -136,7 +187,9 @@ async function readFileTextStream(file) {
   if (!file) return "";
   if (!file.stream) {
     const text = await file.text();
-    setExtensionStatus(`Loaded ${file.name} (${Math.round(file.size / 1024)} KB).`);
+    setExtensionStatus(
+      `Loaded ${file.name} (${Math.round(file.size / 1024)} KB).`,
+    );
     return text;
   }
   const reader = file.stream().getReader();
@@ -148,11 +201,48 @@ async function readFileTextStream(file) {
     if (done) break;
     loaded += value.byteLength;
     chunks.push(decoder.decode(value, { stream: true }));
-    const pct = file.size > 0 ? Math.min(99, Math.round((loaded / file.size) * 100)) : 0;
+    const pct =
+      file.size > 0 ? Math.min(99, Math.round((loaded / file.size) * 100)) : 0;
     setExtensionStatus(`Reading ${file.name}… ${pct}%`);
   }
   chunks.push(decoder.decode());
   return chunks.join("");
+}
+
+async function readBoundedResponseText(response, maxBytes) {
+  const declaredBytes = Number(response.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredBytes) && declaredBytes > maxBytes) {
+    throw new Error("The fetched file exceeds the 25 MiB input limit.");
+  }
+
+  if (!response.body?.getReader) {
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > maxBytes) {
+      throw new Error("The fetched file exceeds the 25 MiB input limit.");
+    }
+    return new TextDecoder().decode(bytes);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks = [];
+  let loaded = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      loaded += value.byteLength;
+      if (loaded > maxBytes) {
+        await reader.cancel();
+        throw new Error("The fetched file exceeds the 25 MiB input limit.");
+      }
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+    chunks.push(decoder.decode());
+    return chunks.join("");
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /**
@@ -177,8 +267,22 @@ function resolveReportFromPayload(payload, fileName) {
 
 function parseLogInWorker(logText, fileName) {
   return new Promise((resolve, reject) => {
+    let settled = false;
     const worker = new Worker("./content/apex-parser-worker.js");
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      worker.terminate();
+      reject(
+        new Error(
+          "Parse timed out after 120 seconds. The log may be too large or malformed.",
+        ),
+      );
+    }, 120_000);
     worker.onmessage = (event) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       const payload = event.data || {};
       worker.terminate();
       if (payload.type !== "PARSE_RESULT") {
@@ -192,12 +296,19 @@ function parseLogInWorker(logText, fileName) {
       resolve(payload);
     };
     worker.onerror = (event) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       worker.terminate();
       const parts = [
         event.message,
         event.filename && `${event.filename}:${event.lineno}`,
       ].filter(Boolean);
-      reject(new Error(parts.join(" — ") || "Worker crashed (no details available)."));
+      reject(
+        new Error(
+          parts.join(" — ") || "Worker crashed (no details available).",
+        ),
+      );
     };
     worker.postMessage({
       type: "PARSE_LOG",
@@ -210,15 +321,26 @@ function parseLogInWorker(logText, fileName) {
 function hydrateExtensionReport(report, parsePayload, fileName, rawLogLines) {
   const next = report && typeof report === "object" ? report : {};
   next.analysis = {
-    executionType: next?.analysis?.executionType || next?.entryPoint?.type || next?.context?.transaction?.requestType || null,
-    scopeRecordIds: Array.isArray(next?.analysis?.scopeRecordIds) ? next.analysis.scopeRecordIds : [],
-    warnings: Array.isArray(parsePayload?.parseResult?.logIssues) ? parsePayload.parseResult.logIssues : [],
-    phaseWarnings: Array.isArray(parsePayload?.parseResult?.phaseWarnings) ? parsePayload.parseResult.phaseWarnings : [],
+    executionType:
+      next?.analysis?.executionType ||
+      next?.entryPoint?.type ||
+      next?.context?.transaction?.requestType ||
+      null,
+    scopeRecordIds: Array.isArray(next?.analysis?.scopeRecordIds)
+      ? next.analysis.scopeRecordIds
+      : [],
+    warnings: Array.isArray(parsePayload?.parseResult?.logIssues)
+      ? parsePayload.parseResult.logIssues
+      : [],
+    phaseWarnings: Array.isArray(parsePayload?.parseResult?.phaseWarnings)
+      ? parsePayload.parseResult.phaseWarnings
+      : [],
   };
   next.source = next.source || {};
   next.source.fileName = next.source.fileName || fileName || "debug-log";
   next.source.input = next.source.input || {};
-  next.source.input.fileName = next.source.input.fileName || fileName || "debug-log";
+  next.source.input.fileName =
+    next.source.input.fileName || fileName || "debug-log";
   next.rawLog = {
     lines: (rawLogLines || []).map((text, index) => ({
       lineNumber: index + 1,
@@ -246,16 +368,31 @@ function resetExpandedState() {
 }
 
 async function displayReport(report, options = {}) {
-  const rawLogLines = Array.isArray(options.rawLogLines) ? options.rawLogLines : [];
+  if (report?.reportVersion !== "3.0.0") {
+    throw new Error(
+      `Unsupported report schema version: ${report?.reportVersion || "missing"}. Expected 3.0.0.`,
+    );
+  }
+  const rawLogLines = Array.isArray(options.rawLogLines)
+    ? options.rawLogLines
+    : [];
   const parsePayload = options.parsePayload || null;
-  const fileName = options.fileName || report?.source?.fileName || report?.source?.input?.fileName || "debug-log";
-  const fileSizeBytes = Number(options.fileSizeBytes || 0) || (rawLogLines.length
-    ? new TextEncoder().encode(rawLogLines.join("\n")).length
-    : 0);
-  const hydrated = hydrateExtensionReport(report, parsePayload, fileName, rawLogLines);
-  currentReportUrl = fileName;
-  currentRawLogLines = rawLogLines;
-  currentReportData = hydrated;
+  const fileName =
+    options.fileName ||
+    report?.source?.fileName ||
+    report?.source?.input?.fileName ||
+    "debug-log";
+  const fileSizeBytes =
+    Number(options.fileSizeBytes || 0) ||
+    (rawLogLines.length
+      ? new TextEncoder().encode(rawLogLines.join("\n")).length
+      : 0);
+  const hydrated = hydrateExtensionReport(
+    report,
+    parsePayload,
+    fileName,
+    rawLogLines,
+  );
   resetExpandedState();
 
   // Cover topbar + main with the loading overlay so the browser never paints
@@ -263,25 +400,34 @@ async function displayReport(report, options = {}) {
   // Two rAF cycles give the browser time to actually paint the overlay before
   // the synchronous render() call blocks the main thread.
   document.body.classList.add("initializing");
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+  );
 
-  render(hydrated, currentRawLogLines);
-  renderRawLogSearchResults("");
+  showOfflineReport({
+    report: hydrated,
+    rawLines: rawLogLines,
+    sourceLabel: fileName,
+  });
   setExtensionEmptyState(false);
   document.body.classList.remove("initializing");
 
   setExtensionLoadDetails({
     fileName,
-    format: fileName.toLowerCase().endsWith(".json") ? "JSON report" : "Salesforce debug log",
-    sizeLabel: formatBytes(fileSizeBytes),
+    format: fileName.toLowerCase().endsWith(".json")
+      ? "JSON report"
+      : "Salesforce debug log",
+    sizeLabel: formatExtensionFileSize(fileSizeBytes),
     stage: "Report ready",
   });
-  const sizeLabel = fileSizeBytes > 0
-    ? ` (${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB)`
-    : "";
-  const advisory = fileSizeBytes > EXTENSION_MAX_RECOMMENDED_BYTES
-    ? " Parsed above 20 MB; worker mode kept the UI responsive."
-    : "";
+  const sizeLabel =
+    fileSizeBytes > 0
+      ? ` (${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB)`
+      : "";
+  const advisory =
+    fileSizeBytes > EXTENSION_MAX_RECOMMENDED_BYTES
+      ? " Parsed above 20 MB; worker mode kept the UI responsive."
+      : "";
   setExtensionStatus(`Loaded ${fileName}${sizeLabel}.${advisory}`);
 }
 
@@ -290,7 +436,7 @@ async function loadJsonFile(file) {
     fileName: file.name,
     source: "Local file",
     format: "JSON report",
-    sizeLabel: formatBytes(file.size),
+    sizeLabel: formatExtensionFileSize(file.size),
     stage: "Reading JSON report",
   });
   setExtensionBusy(`Reading ${file.name}`);
@@ -299,10 +445,14 @@ async function loadJsonFile(file) {
   try {
     parsed = JSON.parse(text);
   } catch (parseError) {
-    throw new Error(`Invalid JSON in ${file.name}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+    throw new Error(
+      `Invalid JSON in ${file.name}: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+    );
   }
   const embeddedLines = Array.isArray(parsed?.rawLog?.lines)
-    ? parsed.rawLog.lines.map((entry) => String(entry?.text ?? entry?.raw ?? ""))
+    ? parsed.rawLog.lines.map((entry) =>
+        String(entry?.text ?? entry?.raw ?? ""),
+      )
     : [];
   await displayReport(parsed, {
     fileName: file.name,
@@ -313,11 +463,14 @@ async function loadJsonFile(file) {
 }
 
 async function loadLogFile(file) {
+  if (file.size > EXTENSION_MAX_LOG_BYTES) {
+    throw new Error("This log exceeds the 25 MiB input limit.");
+  }
   setExtensionLoadDetails({
     fileName: file.name,
     source: "Local file",
     format: "Salesforce debug log",
-    sizeLabel: formatBytes(file.size),
+    sizeLabel: formatExtensionFileSize(file.size),
     stage: "Reading raw log",
   });
   setExtensionBusy(`Preparing ${file.name} for worker parse`);
@@ -327,9 +480,11 @@ async function loadLogFile(file) {
       format: "Not a Salesforce debug log",
       stage: "Rejected",
     });
-    throw new Error("This `.log` file does not look like a Salesforce debug log.");
+    throw new Error(
+      "This `.log` file does not look like a Salesforce debug log.",
+    );
   }
-  const rawLogLines = text.split(/\r?\n/);
+  const rawLogLines = text.split(/\r\n|\r|\n/);
   setExtensionLoadDetails({ stage: "Parsing raw log in worker" });
   setExtensionBusy(`Parsing ${file.name} in worker`);
   const payload = await parseLogInWorker(text, file.name);
@@ -346,27 +501,43 @@ async function handleExtensionFile(file) {
   if (!file) return;
   const lower = String(file.name || "").toLowerCase();
   try {
+    if (file.size > EXTENSION_MAX_LOG_BYTES) {
+      throw new Error("This file exceeds the 25 MiB input limit.");
+    }
     if (lower.endsWith(".json")) {
       await loadJsonFile(file);
       return;
     }
     await loadLogFile(file);
   } catch (error) {
-    setExtensionStatus(`Load failed: ${error instanceof Error ? error.message : String(error)}`);
+    setExtensionStatus(
+      `Load failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   } finally {
     if (extensionFileInput) extensionFileInput.value = "";
   }
 }
 
 async function fetchAndDisplayFromUrl(sourceUrl) {
-  persistSourceHref(sourceUrl || "");
-  const lower = sourceUrl.toLowerCase();
-  const sourceName = sourceUrl.split("/").filter(Boolean).pop() || "debug.log";
+  const normalizedSourceUrl = normalizeExtensionLogUrl(sourceUrl);
+  if (!normalizedSourceUrl) {
+    throw new Error("The source URL is not an allowed .log handoff.");
+  }
+  sourceUrl = normalizedSourceUrl;
+  persistSourceHref(sourceUrl);
+  const encodedSourceName =
+    new URL(sourceUrl).pathname.split("/").filter(Boolean).pop() || "debug.log";
+  let sourceName = encodedSourceName;
+  try {
+    sourceName = decodeURIComponent(encodedSourceName);
+  } catch {
+    // Retain the encoded path segment when malformed percent escapes are present.
+  }
   setExtensionBannerFileName(sourceName);
   setExtensionLoadDetails({
     fileName: sourceName,
     source: "Browser .log page",
-    format: lower.endsWith(".json") ? "JSON report" : "Salesforce debug log",
+    format: "Salesforce debug log",
     sizeLabel: "Resolving",
     stage: "Fetching source file",
   });
@@ -379,31 +550,18 @@ async function fetchAndDisplayFromUrl(sourceUrl) {
     throw new Error(`Failed to fetch source log (${response.status})`);
   }
   const headerBytes = Number(response.headers.get("content-length") || 0);
+  if (headerBytes > EXTENSION_MAX_LOG_BYTES) {
+    throw new Error("The fetched file exceeds the 25 MiB input limit.");
+  }
   if (headerBytes > 0) {
-    setExtensionLoadDetails({ sizeLabel: formatBytes(headerBytes) });
-  }
-  if (lower.endsWith(".json")) {
-    let parsed;
-    try {
-      parsed = await response.json();
-    } catch (parseError) {
-      throw new Error(`Invalid JSON from ${sourceUrl}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-    }
-    const fileName = sourceName || "report.json";
-    const embeddedLines = Array.isArray(parsed?.rawLog?.lines)
-      ? parsed.rawLog.lines.map((entry) => String(entry?.text ?? entry?.raw ?? ""))
-      : [];
-    await displayReport(parsed, {
-      fileName,
-      rawLogLines: embeddedLines,
-      parsePayload: null,
+    setExtensionLoadDetails({
+      sizeLabel: formatExtensionFileSize(headerBytes),
     });
-    return true;
   }
-  const text = await response.text();
+  const text = await readBoundedResponseText(response, EXTENSION_MAX_LOG_BYTES);
   const measuredBytes = new TextEncoder().encode(text).length;
   setExtensionLoadDetails({
-    sizeLabel: formatBytes(measuredBytes),
+    sizeLabel: formatExtensionFileSize(measuredBytes),
     stage: "Validating Salesforce log format",
   });
   if (!looksLikeSalesforceDebugLogText(text)) {
@@ -411,10 +569,12 @@ async function fetchAndDisplayFromUrl(sourceUrl) {
       format: "Not a Salesforce debug log",
       stage: "Rejected",
     });
-    throw new Error("The opened `.log` page does not look like a Salesforce debug log.");
+    throw new Error(
+      "The opened `.log` page does not look like a Salesforce debug log.",
+    );
   }
   const fileName = sourceName || "debug.log";
-  const rawLogLines = text.split(/\r?\n/);
+  const rawLogLines = text.split(/\r\n|\r|\n/);
   setExtensionLoadDetails({
     format: "Salesforce debug log",
     stage: "Parsing raw log in worker",
@@ -436,7 +596,10 @@ async function loadSourceUrl() {
   try {
     return await fetchAndDisplayFromUrl(sourceUrl);
   } catch (error) {
-    setExtensionStatus(`Auto-load failed: ${error instanceof Error ? error.message : String(error)}`);
+    extensionAutoLoadFailed = true;
+    setExtensionStatus(
+      `Auto-load failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return false;
   }
 }
@@ -455,26 +618,37 @@ async function loadStoredSource() {
     if (!payload) {
       throw new Error("Stored log payload was missing.");
     }
-    // Keep the payload in storage so refresh works (re-reads same storageKey).
-    // Old payloads are naturally replaced when the user opens a new log file.
+    // Keep the payload in storage so refresh works (re-reads the same key).
+    // The launcher retains no more than the five most recently opened logs.
     const expiresAt = Number(payload.expiresAt || 0);
     if (Number.isFinite(expiresAt) && expiresAt > 0 && Date.now() > expiresAt) {
       throw new Error("Stored payload expired. Re-open from the original tab.");
     }
-    if (payload.kind === "new-tab-report-state-v1" || (payload.report && Array.isArray(payload.rawLogLines))) {
-      const restoredReport = payload.report && typeof payload.report === "object" ? payload.report : null;
+    if (
+      payload.kind === "new-tab-report-state-v1" ||
+      (payload.report && Array.isArray(payload.rawLogLines))
+    ) {
+      const restoredReport =
+        payload.report && typeof payload.report === "object"
+          ? payload.report
+          : null;
       if (!restoredReport) {
         throw new Error("Stored report payload was missing.");
       }
       const rawLogLines = payload.rawLogLines.map((line) => String(line ?? ""));
-      const fileName = String(payload.fileName || restoredReport?.source?.fileName || "debug.log");
-      const byteSize = Number(payload.fileSizeBytes || (rawLogLines.length
-        ? new TextEncoder().encode(rawLogLines.join("\n")).length
-        : 0));
+      const fileName = String(
+        payload.fileName || restoredReport?.source?.fileName || "debug.log",
+      );
+      const byteSize = Number(
+        payload.fileSizeBytes ||
+          (rawLogLines.length
+            ? new TextEncoder().encode(rawLogLines.join("\n")).length
+            : 0),
+      );
       setExtensionLoadDetails({
         fileName,
         source: "Saved analyzer state",
-        sizeLabel: formatBytes(byteSize),
+        sizeLabel: formatExtensionFileSize(byteSize),
         format: "OfflineReportV2 snapshot",
         stage: "Restoring report context",
       });
@@ -494,12 +668,17 @@ async function loadStoredSource() {
     const sourceHref = String(payload.sourceHref || "").trim();
     persistSourceHref(sourceHref);
     const logText = String(payload.logText || "");
-    const byteSize = Number(payload.fileSizeBytes || new TextEncoder().encode(logText).length);
+    const byteSize = Number(
+      payload.fileSizeBytes || new TextEncoder().encode(logText).length,
+    );
+    if (byteSize > EXTENSION_MAX_LOG_BYTES) {
+      throw new Error("The captured log exceeds the 25 MiB input limit.");
+    }
     setExtensionBannerFileName(String(payload.fileName || "debug.log"));
     setExtensionLoadDetails({
       fileName: String(payload.fileName || "debug.log"),
       source: "Captured page content",
-      sizeLabel: formatBytes(byteSize),
+      sizeLabel: formatExtensionFileSize(byteSize),
       format: "Validating",
       stage: "Validating Salesforce log format",
     });
@@ -508,10 +687,12 @@ async function loadStoredSource() {
         format: "Not a Salesforce debug log",
         stage: "Rejected",
       });
-      throw new Error("The captured page content does not look like a Salesforce debug log.");
+      throw new Error(
+        "The captured page content does not look like a Salesforce debug log.",
+      );
     }
     const fileName = String(payload.fileName || "debug.log");
-    const rawLogLines = logText.split(/\r?\n/);
+    const rawLogLines = logText.split(/\r\n|\r|\n/);
     setExtensionLoadDetails({
       fileName,
       format: "Salesforce debug log",
@@ -529,7 +710,10 @@ async function loadStoredSource() {
     extensionPopulateSidebarFromPayload(payload);
     return true;
   } catch (error) {
-    setExtensionStatus(`Captured-page load failed: ${error instanceof Error ? error.message : String(error)}`);
+    extensionAutoLoadFailed = true;
+    setExtensionStatus(
+      `Captured-page load failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return false;
   }
 }
@@ -544,7 +728,7 @@ async function loadStoredSource() {
 function getGovernorBurnRate(report) {
   const burnRateSource = Array.isArray(report?.governorBurnRate)
     ? report.governorBurnRate
-    : toArray(report?.governorBurnRate?.burnRates);
+    : extensionArray(report?.governorBurnRate?.burnRates);
   const keyMap = {
     soqlQueries: "soqlQueries",
     soqlRows: "soqlRows",
@@ -577,7 +761,8 @@ function getGovernorBurnRate(report) {
       .filter(Boolean),
   );
   // Fallback: compute from raw limits for any key not already present
-  const current = getReportGovernorLimits(report).current?.defaultNamespace || {};
+  const current =
+    getReportGovernorLimits(report).current?.defaultNamespace || {};
   for (const [key, val] of Object.entries(current)) {
     if (byKey.has(key)) continue;
     const used = Number(val?.used ?? 0);
@@ -595,21 +780,23 @@ function getGovernorBurnRate(report) {
   return byKey;
 }
 
-
 /** Returns execution phases. By default filters out 'not_observed' phases. */
 function getExecutionPhases(report, includeNotObserved = false) {
-  return toArray(report?.phases)
-    .filter((p) => includeNotObserved || p?.status !== "not_observed");
+  return extensionArray(report?.phases).filter(
+    (p) => includeNotObserved || p?.status !== "not_observed",
+  );
 }
 
 /** Returns structured savepoints from the report (preferred over raw log scan). */
 function getSavepoints(report) {
-  return toArray(report?.savepoints);
+  return extensionArray(report?.savepoints);
 }
 
 /** Returns CPU attribution object from the report. */
 function getCpuAttribution(report) {
-  return report?.cpuAttribution || { byType: [], byNamespace: [], topHotspots: [] };
+  return (
+    report?.cpuAttribution || { byType: [], byNamespace: [], topHotspots: [] }
+  );
 }
 
 /** Returns peak heap bytes mid-transaction, or null if unavailable. */
@@ -626,11 +813,11 @@ function getDebugLevelQuality(report) {
 function getTriggerCascades(report) {
   const cascades = Array.isArray(report?.triggerCascade)
     ? report.triggerCascade
-    : toArray(report?.triggerCascade?.cascades);
+    : extensionArray(report?.triggerCascade?.cascades);
   return cascades.filter((c) => {
     const explicit = Number(c?.chainLength || 0);
     if (explicit > 1) return true;
-    const childCount = toArray(c?.children).length;
+    const childCount = extensionArray(c?.children).length;
     return childCount > 0;
   });
 }
@@ -639,7 +826,7 @@ function getTriggerCascades(report) {
 function getManagedPackageImpact(report) {
   return Array.isArray(report?.managedPackageImpact)
     ? report.managedPackageImpact
-    : toArray(report?.managedPackageImpact?.namespaces);
+    : extensionArray(report?.managedPackageImpact?.namespaces);
 }
 
 /**
@@ -650,37 +837,58 @@ function buildVerdict(report) {
   const burnRates = getGovernorBurnRate(report);
   const issues = getReportIssues(report);
   const patterns = getSoqlPatternSuspects(report);
-  const failedValidations = toArray(report?.trace?.validationBlocks)
-    .flatMap((vb) => toArray(vb?.rules).filter((r) => {
-      const o = String(r?.outcome || "").toUpperCase();
-      return o && o !== "PASS";
-    }));
+  const failedValidations = extensionArray(report?.trace?.validationBlocks).flatMap(
+    (vb) =>
+      extensionArray(vb?.rules).filter((r) => {
+        const o = String(r?.outcome || "").toUpperCase();
+        return o && o !== "PASS";
+      }),
+  );
 
-  const criticalLimits = [...burnRates.values()].filter((r) => r?.status === "critical");
-  const warnLimits = [...burnRates.values()].filter((r) => r?.status === "warn");
+  const criticalLimits = [...burnRates.values()].filter(
+    (r) => r?.status === "critical",
+  );
+  const warnLimits = [...burnRates.values()].filter(
+    (r) => r?.status === "warn",
+  );
   const errors = issues.filter((i) => !isWarningItem(i));
 
   // Priority: errors > critical limits > N+1 > failed validations > warn limits > ok
   if (errors.length > 0) {
-    return { level: "error", text: `${errors.length} unhandled exception${errors.length !== 1 ? "s" : ""} detected.` };
+    return {
+      level: "error",
+      text: `${errors.length} unhandled exception${errors.length !== 1 ? "s" : ""} detected.`,
+    };
   }
   if (criticalLimits.length > 0) {
-    const names = criticalLimits.map((l) => governorLimitLabel(l.limitKey)).join(", ");
+    const names = criticalLimits
+      .map((l) => governorLimitLabel(l.limitKey))
+      .join(", ");
     return { level: "critical", text: `Governor limit critical: ${names}` };
   }
   if (patterns.length > 0) {
-    return { level: "warn", text: `${patterns.length} possible N+1 SOQL pattern${patterns.length !== 1 ? "s" : ""} detected.` };
+    return {
+      level: "warn",
+      text: `${patterns.length} possible N+1 SOQL pattern${patterns.length !== 1 ? "s" : ""} detected.`,
+    };
   }
   if (failedValidations.length > 0) {
-    return { level: "warn", text: `${failedValidations.length} validation rule${failedValidations.length !== 1 ? "s" : ""} failed.` };
+    return {
+      level: "warn",
+      text: `${failedValidations.length} validation rule${failedValidations.length !== 1 ? "s" : ""} failed.`,
+    };
   }
   if (warnLimits.length > 0) {
-    const names = warnLimits.map((l) => governorLimitLabel(l.limitKey)).join(", ");
+    const names = warnLimits
+      .map((l) => governorLimitLabel(l.limitKey))
+      .join(", ");
     return { level: "info", text: `Governor limits elevated: ${names}` };
   }
-  return { level: "ok", text: "Transaction looks healthy. No governor limit concerns detected." };
+  return {
+    level: "ok",
+    text: "Transaction looks healthy. No governor limit concerns detected.",
+  };
 }
-
 
 // ─── End Display Improvement Accessors ──────────────────────────────────────
 
@@ -691,7 +899,9 @@ function buildVerdict(report) {
 
 async function tryRestoreCachedReport() {
   // Try session storage first, then local storage (Firefox compat)
-  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(Boolean);
+  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(
+    Boolean,
+  );
   for (const store of stores) {
     try {
       const stored = await store.get("apex-source-href");
@@ -719,6 +929,47 @@ async function initializeExtensionState() {
   }
   setExtensionEmptyState(true);
   setExtensionStatus("Ready. Select a local `.log` or `.json` file to begin.");
+}
+
+function showExtensionLoadFailureState() {
+  document.body.classList.remove("extension-shell-loading");
+  document.body.classList.remove("initializing");
+  setExtensionEmptyState(true);
+}
+
+async function initializeExtensionTheme() {
+  const storageKey = "apex-log-insights-theme";
+  try {
+    const stored = await chrome?.storage?.local?.get(storageKey);
+    const preference = stored?.[storageKey];
+    if (preference === "light" || preference === "dark") {
+      window.localStorage.setItem(storageKey, preference);
+    } else {
+      window.localStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Use the viewer's system preference when extension storage is unavailable.
+  }
+  initializeThemeControls?.();
+  const persistExtensionTheme = () => {
+    const theme = document.documentElement.dataset.theme;
+    if (theme === "light" || theme === "dark") {
+      chrome?.storage?.local?.set({ [storageKey]: theme }).catch(() => {});
+    }
+  };
+  themeLightBtn?.addEventListener("click", persistExtensionTheme);
+  themeDarkBtn?.addEventListener("click", persistExtensionTheme);
+  chrome?.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== "local" || !changes[storageKey]) return;
+    const preference = changes[storageKey].newValue;
+    if (preference === "light" || preference === "dark") {
+      window.localStorage.setItem(storageKey, preference);
+      applyTheme(preference);
+    } else {
+      window.localStorage.removeItem(storageKey);
+      applyTheme(resolveInitialTheme());
+    }
+  });
 }
 
 rawSearchBtn.addEventListener("click", () => {
@@ -749,7 +1000,8 @@ rawContextSelect.addEventListener("change", () => {
 if (rawUserDebugOnlyToggle) {
   rawUserDebugOnlyToggle.addEventListener("change", () => {
     const userDebugOnly = isUserDebugOnlyMode();
-    if (userDebugOnly && rawErrorsToggle?.checked) rawErrorsToggle.checked = false;
+    if (userDebugOnly && rawErrorsToggle?.checked)
+      rawErrorsToggle.checked = false;
     if (userDebugOnly) {
       rawSearchInput.value = "";
       if (rawContextSelect) {
@@ -772,7 +1024,8 @@ if (rawErrorsToggle) {
   rawErrorsToggle.addEventListener("change", () => {
     const errorsOnly = isErrorsOnlyMode();
     if (errorsOnly) {
-      if (rawUserDebugOnlyToggle?.checked) rawUserDebugOnlyToggle.checked = false;
+      if (rawUserDebugOnlyToggle?.checked)
+        rawUserDebugOnlyToggle.checked = false;
       if (rawShowAllToggle?.checked) rawShowAllToggle.checked = false;
       rawSearchInput.value = "";
     }
@@ -789,7 +1042,8 @@ if (rawShowAllToggle) {
   rawShowAllToggle.addEventListener("change", () => {
     if (rawShowAllToggle.checked) {
       if (rawContextSelect) rawContextSelect.value = "0";
-      if (rawUserDebugOnlyToggle?.checked) rawUserDebugOnlyToggle.checked = false;
+      if (rawUserDebugOnlyToggle?.checked)
+        rawUserDebugOnlyToggle.checked = false;
       if (rawErrorsToggle?.checked) rawErrorsToggle.checked = false;
       saveLogExplorerSettings({
         contextRows: 0,
@@ -836,17 +1090,27 @@ if (extensionOpenFileBtn && extensionFileInput) {
   });
 }
 
+if (extensionLoaderPanel) {
+  extensionLoaderPanel.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    extensionLoaderPanel.classList.add("is-drop-target");
+  });
+  extensionLoaderPanel.addEventListener("dragleave", () => {
+    extensionLoaderPanel.classList.remove("is-drop-target");
+  });
+  extensionLoaderPanel.addEventListener("drop", (event) => {
+    event.preventDefault();
+    extensionLoaderPanel.classList.remove("is-drop-target");
+    const [file] = Array.from(event.dataTransfer?.files || []);
+    void handleExtensionFile(file);
+  });
+}
+
 toggleAllQueriesBtn.addEventListener("click", () => {
   queriesExpanded = !queriesExpanded;
-  problematicQueriesTable.hidden = queriesExpanded;
-  allQueriesWrap.hidden = !queriesExpanded;
-  toggleAllQueriesBtn.hidden = allQueriesCount <= uiConfig.limits.soql;
-  setExpandButtonLabel(toggleAllQueriesBtn, queriesExpanded, allQueriesCount);
-  if (queriesSubheading) {
-    const visibleLongestQueryCount = Math.min(allQueriesCount, uiConfig.limits.soql);
-    queriesSubheading.textContent = queriesExpanded
-      ? uiConfig.labels.soqlExpandedSubheading
-      : fillCountTemplate(uiConfig.labels.soqlTopTemplate, visibleLongestQueryCount);
+  if (currentReportData) {
+    render(currentReportData, currentRawLogLines);
+    renderRawLogSearchResults(rawSearchInput.value);
   }
 });
 
@@ -878,7 +1142,11 @@ if (toggleAllWarningsBtn) {
   toggleAllWarningsBtn.addEventListener("click", () => {
     warningsExpanded = !warningsExpanded;
     toggleAllWarningsBtn.hidden = allWarningsCount <= uiConfig.limits.warnings;
-    setExpandButtonLabel(toggleAllWarningsBtn, warningsExpanded, allWarningsCount);
+    setExpandButtonLabel(
+      toggleAllWarningsBtn,
+      warningsExpanded,
+      allWarningsCount,
+    );
     if (currentReportData) {
       render(currentReportData, currentRawLogLines);
       renderRawLogSearchResults(rawSearchInput.value);
@@ -888,10 +1156,13 @@ if (toggleAllWarningsBtn) {
 
 if (toggleResourceUsageBtn && resourceUsageBody) {
   toggleResourceUsageBtn.addEventListener("click", () => {
-    setSectionCollapsed(toggleResourceUsageBtn, resourceUsageBody, !resourceUsageBody.hidden);
+    setSectionCollapsed(
+      toggleResourceUsageBtn,
+      resourceUsageBody,
+      !resourceUsageBody.hidden,
+    );
   });
 }
-
 
 document.addEventListener("click", (e) => {
   const link = e.target.closest(".jumpRawFromQuery");
@@ -903,7 +1174,9 @@ document.addEventListener("click", (e) => {
   }
   e.preventDefault();
   const encodedLineQuery = String(link.dataset.lineQuery || "").trim();
-  const lineQuery = encodedLineQuery ? decodeURIComponent(encodedLineQuery) : "";
+  const lineQuery = encodedLineQuery
+    ? decodeURIComponent(encodedLineQuery)
+    : "";
   if (lineQuery) {
     openRawLogQuery(lineQuery);
     return;
@@ -942,7 +1215,13 @@ topbarHomeLink?.addEventListener("click", goToTriageSummary);
 
 // Use history.pushState instead of window.location.hash to avoid the browser's
 // native scroll-to-anchor behavior, which fights position:sticky on the nav bar.
-[triageSummaryTabLink, executionStoryTabLink, dataLimitsTabLink, diagnosticsTabLink, logExplorerTabLink].forEach((link) => {
+[
+  triageSummaryTabLink,
+  executionStoryTabLink,
+  dataLimitsTabLink,
+  diagnosticsTabLink,
+  logExplorerTabLink,
+].forEach((link) => {
   link?.addEventListener("click", (event) => {
     event.preventDefault();
     const href = String(link.getAttribute("href") || "");
@@ -976,8 +1255,13 @@ function getParentFileUrl(fileUrl) {
  * (MV3 service workers cannot fetch file:// URLs.)
  */
 function extensionPopulateSidebarFromPayload(payload) {
-  const siblings = Array.isArray(payload?.siblingLogFiles) ? payload.siblingLogFiles : [];
-  if (siblings.length <= 1) return; // no siblings besides the current file
+  const siblings = Array.isArray(payload?.siblingLogFiles)
+    ? payload.siblingLogFiles
+    : [];
+  if (siblings.length <= 1) {
+    populateSidebar([], "");
+    return;
+  }
 
   const currentFileName = String(payload?.fileName || "").trim();
 
@@ -996,13 +1280,21 @@ function extensionPopulateSidebarFromPayload(payload) {
 /** Restore sidebar from storage (on refresh). Returns true if restored. */
 async function extensionRestoreSidebar() {
   // Try session storage first, then local storage (Firefox compat)
-  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(Boolean);
+  const stores = [chrome?.storage?.session, chrome?.storage?.local].filter(
+    Boolean,
+  );
   for (const store of stores) {
     try {
-      const stored = await store.get(["apex-sidebar-files"]);
+      const stored = await store.get([
+        "apex-sidebar-files",
+        "apex-sidebar-active",
+      ]);
       const files = stored?.["apex-sidebar-files"];
       if (Array.isArray(files) && files.length > 1) {
-        extensionRenderSidebar(files, "");
+        extensionRenderSidebar(
+          files,
+          String(stored?.["apex-sidebar-active"] || ""),
+        );
         return true;
       }
     } catch {
@@ -1018,7 +1310,9 @@ function extensionRenderSidebar(siblings, activeFileName) {
   // Annotate entries with file:// URLs for click handling
   const files = siblings.map((f) => ({
     ...f,
-    fileUrl: parentDir ? parentDir + encodeURIComponent(f.name).replace(/%2F/g, "/") : "",
+    fileUrl: parentDir
+      ? parentDir + encodeURIComponent(f.name).replace(/%2F/g, "/")
+      : "",
   }));
 
   populateSidebar(files, activeFileName);
@@ -1031,10 +1325,14 @@ function extensionRenderSidebar(siblings, activeFileName) {
 function extensionOpenSidebarFile(fileName, entry) {
   // Update session storage so the new tab highlights the correct file
   if (chrome?.storage?.session) {
-    chrome.storage.session.set({ "apex-sidebar-active": fileName }).catch(() => {});
+    chrome.storage.session
+      .set({ "apex-sidebar-active": fileName })
+      .catch(() => {});
   }
   const parentDir = getParentFileUrl(extensionLoadedSourceHref);
-  const fileUrl = entry?.fileUrl || (parentDir + encodeURIComponent(fileName).replace(/%2F/g, "/"));
+  const fileUrl =
+    entry?.fileUrl ||
+    parentDir + encodeURIComponent(fileName).replace(/%2F/g, "/");
   if (!fileUrl) return;
   if (chrome?.tabs?.create) {
     chrome.tabs.create({ url: fileUrl });
@@ -1070,7 +1368,10 @@ function persistSourceHref(href) {
 
 /** Resolve the source file:// URL from all available sources. */
 async function resolveSourceHref() {
-  if (extensionLoadedSourceHref && extensionLoadedSourceHref.startsWith("file://")) {
+  if (
+    extensionLoadedSourceHref &&
+    extensionLoadedSourceHref.startsWith("file://")
+  ) {
     return extensionLoadedSourceHref;
   }
   // Try URL params
@@ -1088,7 +1389,9 @@ async function resolveSourceHref() {
         extensionLoadedSourceHref = href;
         return href;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   // Try local storage (fallback for Firefox)
   if (chrome?.storage?.local) {
@@ -1099,7 +1402,9 @@ async function resolveSourceHref() {
         extensionLoadedSourceHref = href;
         return href;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   return "";
 }
@@ -1112,14 +1417,23 @@ async function extensionScanAndPopulateSidebar() {
   if (!parentDir) return;
   try {
     const response = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "SCAN_DIRECTORY", url: parentDir }, resolve);
+      chrome.runtime.sendMessage(
+        { type: "SCAN_DIRECTORY", url: parentDir },
+        resolve,
+      );
     });
-    if (response?.ok && Array.isArray(response.files) && response.files.length > 1) {
+    if (
+      response?.ok &&
+      Array.isArray(response.files)
+    ) {
       const currentFileName = currentReportData?.source?.fileName || "";
-      extensionPopulateSidebarFromPayload({ siblingLogFiles: response.files, fileName: currentFileName });
+      extensionPopulateSidebarFromPayload({
+        siblingLogFiles: response.files,
+        fileName: currentFileName,
+      });
     }
   } catch {
-    // ignore
+    setExtensionStatus("Could not refresh the sibling log list.");
   }
 }
 
@@ -1137,7 +1451,9 @@ function initExtensionSidebar() {
   if (chrome?.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes["apex-sidebar-settings"]) return;
-      const enabled = Boolean(changes["apex-sidebar-settings"].newValue?.enabled);
+      const enabled = Boolean(
+        changes["apex-sidebar-settings"].newValue?.enabled,
+      );
       const sidebarEl = document.getElementById("fileSidebar");
       const toggleBtn = document.getElementById("sidebarToggleBtn");
       if (enabled) {
@@ -1156,7 +1472,9 @@ function initExtensionSidebar() {
         if (overlay) overlay.hidden = true;
         // Clear session cache
         if (chrome?.storage?.session) {
-          chrome.storage.session.remove(["apex-sidebar-files", "apex-sidebar-active"]).catch(() => {});
+          chrome.storage.session
+            .remove(["apex-sidebar-files", "apex-sidebar-active"])
+            .catch(() => {});
         }
       }
     });
@@ -1164,10 +1482,12 @@ function initExtensionSidebar() {
 }
 
 async function init() {
-  initializeThemeControls?.();
+  await initializeExtensionTheme();
   await initializeLogExplorerSettings?.();
   initExtensionSidebar();
-  const hasAutoSource = Boolean(getExtensionSourceUrl() || getExtensionStorageKey());
+  const hasAutoSource = Boolean(
+    getExtensionSourceUrl() || getExtensionStorageKey(),
+  );
   if (hasAutoSource) {
     document.body.classList.add("extension-shell-loading");
     setExtensionEmptyState(true);
@@ -1179,16 +1499,20 @@ async function init() {
   await loadUIConfig();
   const loadedFromStorage = await loadStoredSource();
   const loadedFromSourceUrl = loadedFromStorage ? true : await loadSourceUrl();
-  const loadedFromCache = (!loadedFromStorage && !loadedFromSourceUrl) ? await tryRestoreCachedReport() : false;
+  const loadedFromCache =
+    !loadedFromStorage && !loadedFromSourceUrl
+      ? await tryRestoreCachedReport()
+      : false;
   if (!loadedFromStorage && !loadedFromSourceUrl && !loadedFromCache) {
-    await initializeExtensionState();
+    if (extensionAutoLoadFailed) showExtensionLoadFailureState();
+    else await initializeExtensionState();
   }
   syncRawCopyButtons();
   setSectionCollapsed(toggleResourceUsageBtn, resourceUsageBody, true);
   setViewModeFromHash();
   // Restore sidebar: try session cache first, then live scan if enabled
   extensionRestoreSidebar().then(async (restored) => {
-    if (!restored && await isSidebarEnabled()) {
+    if (!restored && (await isSidebarEnabled())) {
       extensionScanAndPopulateSidebar();
     }
   });

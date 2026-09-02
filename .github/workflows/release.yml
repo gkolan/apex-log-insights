@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag matches package version
+        run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
+      - run: pnpm validate
+      - run: pnpm audit:report
+      - run: pnpm build
+      - run: pnpm bugs:report
+      - name: Publish npm packages
+        run: pnpm --filter @apex-log-insights/core --filter @apex-log-insights/cli --filter @apex-log-insights/mcp publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Package VS Code extension
+        run: pnpm --dir packages/vscode-ext package:vsix
+
+      - name: Select release notes
+        id: notes
+        run: |
+          notes_file="docs/releases/${GITHUB_REF_NAME#v}.md"
+          if [ -f "$notes_file" ]; then
+            echo "args=--notes-file $notes_file" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--generate-notes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          packages/browser-ext/dist/chrome-extension-*.zip
+          packages/browser-ext/dist/edge-extension-*.zip
+          packages/browser-ext/dist/firefox-extension-*.xpi
+          packages/vscode-ext/apex-log-insights.vsix
+          ${{ steps.notes.outputs.args }}
+          --verify-tag

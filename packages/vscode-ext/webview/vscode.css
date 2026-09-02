@@ -1,0 +1,55 @@
+:root,
+:root[data-theme="dark"],
+:root[data-theme="light"] {
+  color-scheme: light dark;
+  --bg: var(--vscode-editor-background);
+  --surface: var(--vscode-sideBar-background);
+  --surface-subtle: var(--vscode-editorWidget-background);
+  --surface-soft: var(--vscode-editorWidget-background);
+  --surface-muted: var(--vscode-list-inactiveSelectionBackground);
+  --ink: var(--vscode-editor-foreground);
+  --ink-secondary: var(--vscode-descriptionForeground);
+  --muted: var(--vscode-descriptionForeground);
+  --text-muted: var(--vscode-descriptionForeground);
+  --faint: var(--vscode-disabledForeground);
+  --line: var(--vscode-panel-border);
+  --line-light: var(--vscode-widget-border, var(--vscode-panel-border));
+  --accent: var(--vscode-textLink-foreground);
+  --accent-hover: var(--vscode-textLink-activeForeground);
+  --accent-light: var(--vscode-list-hoverBackground);
+  --accent-border: var(--vscode-focusBorder);
+  --error-accent: var(--vscode-errorForeground);
+  --error-text: var(--vscode-errorForeground);
+  --warn-accent: var(--vscode-editorWarning-foreground);
+  --warn-text: var(--vscode-editorWarning-foreground);
+  --ok-text: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen));
+}
+
+body {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+.theme-toggle,
+.file-sidebar,
+.sidebar-toggle-btn {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder) !important;
+  outline-offset: 2px;
+}
+
+.vscodeRefreshAnalysis {
+  margin-inline-start: 0.75rem;
+  border: 0;
+  padding: 0.3rem 0.65rem;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  cursor: pointer;
+}
+
+.vscodeRefreshAnalysis:hover {
+  background: var(--vscode-button-hoverBackground);
+}

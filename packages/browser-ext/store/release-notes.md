@@ -1,75 +1,35 @@
-# Release Notes — Apex Log Insights
+# Store release notes
 
-Chrome Web Store "What's new" copy for each submission.
+Use this page to copy version-specific text into the Chrome Web Store “What's new” field. Select the section whose version matches the submitted manifest; do not combine notes from different releases.
 
----
+## Version 1.2.0
 
-## v1.0 — Initial Release
+```text
+Updated the five-view investigation workflow with a Salesforce Cosmos-inspired Night theme, resource and heap charts, execution waterfalls, lifecycle steps, record drill-downs, and Apex database cursor analysis. Triage shows log-quality warnings only when missing evidence can affect a conclusion and provides failure context for captured exceptions. Log Explorer has clearer evidence links and bounded large-log rendering. Files remain local.
+```
 
-**What's new**
+## Version 1.1.34
 
-Apex Log Insights is now on the Chrome Web Store.
+```text
+Added an optional Chrome and Edge file sidebar for opening sibling .log files. CLI directory mode now provides the same file navigation. Fixed analyzer restoration after refresh, including Firefox storage behavior. Updated the welcome-page permission status and Firefox packaging declarations.
+```
 
-This is the first public release of a tool that has been in active development and private use since early 2026. The extension has gone through over 340 internal build iterations and is stable for production use.
+## Version 1.1.17
 
-**Highlights in this release:**
+```text
+Corrected execution durations, N+1 SOQL detection, Visualforce namespace parsing, and timestamp parsing. Fixed unsafe HTML rendering, CLI path traversal, and MCP error handling. Added repository security and static-analysis commands.
+```
 
-- Five structured views: Triage, Execution, Data & Limits, Diagnostics, and Log Explorer
-- 20-phase Salesforce DML execution lifecycle mapping
-- N+1 SOQL detection — automatically flags queries inside loops
-- Governor limit burn rate — shows which execution phase consumed CPU, heap, and query rows
-- Evidence linking — click any item in any view to jump to its exact raw log line
-- Mixed DML and recursive trigger detection
-- Execution context detection (trigger, queueable, future method, batch, scheduled, anonymous Apex, platform event)
-- Debug level quality scoring — tells you if your log is missing key event types
-- PHI/PII redaction — mask sensitive data before copying log content to tickets or bug reports
-- HTTP callout analysis with status codes and Named Credential pairing
-- Auto-detection — browse to any .log URL and the extension intercepts it automatically
-- Fully offline — no server, no account, no data transmitted
+## Initial release
 
-**Note:** The underlying parser is built on the same open-source Apex log tokenizer used by other Salesforce developer tools.
+```text
+Added local Apex debug-log analysis with Triage Summary, Execution Story, Data & Limits, Diagnostics, and Log Explorer. Findings link to supporting raw lines. Analysis includes SOQL, DML, governor limits, execution context, trigger behavior, callouts, and instrumentation quality when the source log contains the required events.
+```
 
----
+## Add a release
 
-## v1.1.17 — Bug Fixes & Security Hardening
-
-**What's new in v1.1.17**
-
-This release fixes several bugs found during a comprehensive code review, hardens security, and adds automated quality tooling to the build pipeline.
-
-**Bug fixes:**
-- Execution timeline now shows correct event durations instead of 0.0 ms
-- Execution Story Detail table correctly displays per-event duration
-- N+1 SOQL detection accuracy improved
-- Visualforce namespace parsing fixed (was always returning 'default')
-- Timestamp regex in parser entry-point corrected (unescaped dot)
-- Worker build artifact now stays in sync with source on every build
-
-**Security:**
-- XSS vulnerability patched in `displayValue()` and `queryTable()` output
-- Path traversal vulnerability fixed in CLI local server
-- MCP tool handlers now return proper error responses instead of crashing
-
-**Improvements:**
-- Automated security scanning (`pnpm audit`) and bug detection (`pnpm bugs`) added to the build toolchain
-- 45 unsafe index-access patterns fixed across the core package
-- Dead code removal across viewer, report engine, and public API
-
----
-
-## Template for future releases
-
-*(Copy and fill in for each subsequent Web Store update)*
-
-**What's new in vX.Y**
-
-[1–3 sentence summary of the most user-visible change]
-
-**Changes:**
-- [Feature or fix 1]
-- [Feature or fix 2]
-- [Feature or fix 3]
-
-**Bug fixes:**
-- [Bug fix 1]
-- [Bug fix 2]
+1. Copy the user-visible changes from `CHANGELOG.md`.
+2. Keep only behavior included in the submitted extension.
+3. State the corrected or added behavior; omit claims about importance or quality.
+4. Use exact view labels from `docs/reference/terminology.md`.
+5. Confirm the version matches the source manifest and upload archive.

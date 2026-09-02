@@ -6,6 +6,6 @@
  * re-exports it so parserCore.ts can continue to `import { performance } from
  * 'node:perf_hooks'` without any source changes.
  */
-export const performance: { now(): number } =
-  (globalThis as unknown as { performance?: { now(): number } }).performance ??
-  { now: () => Date.now() };
+export const performance: { now(): number } = (
+  globalThis as unknown as { performance?: { now(): number } }
+).performance ?? { now: () => Date.now() };

@@ -1,4 +1,4 @@
-import { toArray, collectPhases } from "./normalize-helpers.js";
+import { collectPhases } from "./normalize-helpers.js";
 import { buildRawLineMap, normalizeEvidence } from "./normalize-evidence-mapping.js";
 import { normalizeData } from "./normalize-database.js";
 import { normalizeExecution } from "./normalize-execution.js";
@@ -26,7 +26,7 @@ export function normalizeReport(loaded) {
     console.error("Report normalization failed:", err);
     return {
       summary: {},
-      execution: { chain: [], phases: [], hotspots: [], triggerNames: [], triggerCascade: [], managedImpact: [], phaseDetails: [] },
+      execution: { chain: [], tree: [], phases: [], hotspots: [], triggerNames: [], triggerCascade: [], managedImpact: [], phaseDetails: [] },
       data: {},
       diagnostics: { issues: [], executionContext: {} },
       evidence: {},

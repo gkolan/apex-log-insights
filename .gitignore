@@ -1,27 +1,61 @@
 # Dependencies
 node_modules/
+.test-dist/
+.pnpm-store/
 
 # Build output
 dist/
 *.tsbuildinfo
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
 
-# Package manager
+# Package manager and runtime logs
 pnpm-debug.log*
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pid
+*.pid.lock
 
 # Generated extension assets (built by assemble-extension-ui.ts)
 packages/browser-ext/shared/app.js
 packages/browser-ext/shared/styles.css
+packages/browser-ext/shared/content/apex-parser-worker.js
 
 # Generated worker (build artifact)
 viewer/apex-parser-worker.js
 
-# Extension zip bundles
-packages/browser-ext/dist/*.zip
+# Extension packages outside the intentional docs/releases archive
+packages/browser-ext/dist/
+packages/vscode-ext/*.vsix
+web-ext-artifacts/
+*.crx
+*.tgz
+
+# Generated analysis and diagnostic reports
+audit/
+bugs/
+reports/
+code-analyzer-output/
+external-corpus/
+# Backward-compatible ignore for scan output created before the dedicated folder.
+code-analyzer-results-*.json
+code-analyzer-results-*.log
+
+# Test output
+coverage/
+.nyc_output/
+.vscode-test/
+test-results/
+junit.xml
+*.lcov
 
 # OS files
 .DS_Store
 Thumbs.db
+._*
 
 # Editor / IDE
 .idea/
@@ -29,13 +63,36 @@ Thumbs.db
 *.swp
 *.swo
 *~
+*.code-workspace
 
-# Environment
+# Local AI-agent state and disposable worktrees
+.claude/settings.local.json
+.claude/worktrees/
+.codex/
+
+# Environment and machine-local configuration
+.localdevserver/
+.sf/
+.sfdx/
 .env
 .env.*
+!.env.example
+!.env.*.example
+*.local
 
-# Test coverage
-coverage/
+# Temporary files and patch leftovers
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
 
-# Misc
+# Local logs. Synthetic fixture logs are explicitly restored below.
 *.log
+
+# Sanitized, synthetic test logs are intentionally versioned.
+!fixtures/
+!fixtures/**/*.log
+
+# Local research exports; Markdown research notes remain versionable.
+research/*.pdf

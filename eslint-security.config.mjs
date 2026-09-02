@@ -17,5 +17,14 @@ export default [
       "security/detect-pseudoRandomBytes": "warn",
     },
   },
-  { ignores: ["**/node_modules/**", "**/dist/**", "**/.pnpm-store/**", "**/shared/app.js", "**/shared/app-extension-only.js", "**/_backup-pre-monorepo/**"] },
+  {
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.pnpm-store/**",
+      "**/shared/app.js",
+      "**/shared/app-extension-only.js",
+      "**/_backup-pre-monorepo/**",
+    ],
+  },
 ];

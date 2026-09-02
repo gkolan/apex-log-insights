@@ -1,0 +1,576 @@
+09:15:32.001 (1234567)|EXECUTION_STARTED
+09:15:32.002 (1234699)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000001|AccountTrigger on Account (before insert)
+09:15:32.003 (1245678)|SYSTEM_MODE_ENTER
+09:15:32.004 (1256789)|USER_DEBUG|[1]|DEBUG|AccountTrigger: Processing 5 new account records
+09:15:32.005 (1267890)|HEAP_ALLOCATE|[43]|Bytes:2048
+09:15:32.006 (1278901)|VARIABLE_SCOPE_BEGIN|[43]|this=Map:1
+09:15:32.007 (1289012)|VARIABLE_SCOPE_BEGIN|[44]|newAccountIds=Set:5
+09:15:32.008 (1300123)|STATEMENT_EXECUTE|[45]
+09:15:32.009 (1311234)|CONSTRUCTOR_ENTRY|[45]|Set<Id>
+09:15:32.010 (1322345)|CONSTRUCTOR_EXIT|[45]
+09:15:32.011 (1333456)|VARIABLE_ASSIGNMENT|[46]|newAccountIds=Set{001xx0000003QQQ, 001xx0000003RRR, 001xx0000003SSS, 001xx0000003TTT, 001xx0000003UUU}
+09:15:32.012 (1344567)|SOQL_EXECUTE_BEGIN|[48]|SELECT Id, Name, BillingCity, BillingState FROM Account WHERE Name LIKE '%Acme%'
+09:15:32.013 (1355678)|SOQL_EXECUTE_EXPLAIN|[48]|cardinality:3|relative_selectivity:0.024|fields_returned:4|index_name:Name|index_selectivity:0.001
+09:15:32.014 (1366789)|SOQL_EXECUTE_END|[48]|rows:3
+09:15:32.015 (1377890)|USER_DEBUG|[49]|DEBUG|Found 3 existing Acme accounts
+09:15:32.016 (1388901)|HEAP_ALLOCATE|[50]|Bytes:1536
+09:15:32.017 (1400012)|STATEMENT_EXECUTE|[51]
+09:15:32.018 (1411123)|DML_BEGIN|[52]|DML.insert[Account]|Number of rows processed:2
+09:15:32.019 (1422234)|DML_END|[52]|0.25
+09:15:32.020 (1433345)|USER_DEBUG|[53]|DEBUG|Inserted 2 accounts in bulk operation
+09:15:32.021 (1444456)|STATEMENT_EXECUTE|[54]
+09:15:32.022 (1455567)|VARIABLE_ASSIGNMENT|[55]|result=Boolean:true
+09:15:32.023 (1466678)|CODE_UNIT_FINISHED|AccountTrigger on Account (before insert)
+09:15:32.024 (1477789)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000002|AccountTrigger on Account (after insert)
+09:15:32.025 (1488890)|SYSTEM_MODE_ENTER
+09:15:32.026 (1500001)|USER_DEBUG|[56]|DEBUG|AccountTrigger after insert: Starting account sync workflow
+09:15:32.027 (1511112)|HEAP_ALLOCATE|[57]|Bytes:3072
+09:15:32.028 (1522223)|METHOD_ENTRY|[58]|AccountService.synchronizeAccounts(Set<Id> accountIds)
+09:15:32.029 (1533334)|VARIABLE_SCOPE_BEGIN|[58]|accountIds=Set:5
+09:15:32.030 (1544445)|SOQL_EXECUTE_BEGIN|[60]|SELECT Id, Email, Phone FROM Account WHERE Id IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU')
+09:15:32.031 (1555556)|SOQL_EXECUTE_EXPLAIN|[60]|cardinality:5|relative_selectivity:0.032|fields_returned:3|index_name:Id|index_selectivity:0.001
+09:15:32.032 (1566667)|SOQL_EXECUTE_END|[60]|rows:5
+09:15:32.033 (1577778)|USER_DEBUG|[61]|DEBUG|Retrieved account details for 5 records
+09:15:32.034 (1588889)|HEAP_ALLOCATE|[62]|Bytes:2048
+09:15:32.035 (1600000)|STATEMENT_EXECUTE|[63]
+09:15:32.036 (1611111)|DML_BEGIN|[65]|DML.update[Task]|Number of rows processed:1
+09:15:32.037 (1622222)|DML_END|[65]|0.18
+09:15:32.038 (1633333)|USER_DEBUG|[66]|FINE|Updated 1 account task record
+09:15:32.039 (1644444)|METHOD_ENTRY|[68]|ContactHelper.getRelatedContacts(Set<Id> accountIds)
+09:15:32.040 (1655555)|VARIABLE_SCOPE_BEGIN|[68]|accountIds=Set:5
+09:15:32.041 (1666666)|VARIABLE_SCOPE_BEGIN|[69]|contactMap=Map:5
+09:15:32.042 (1677777)|HEAP_ALLOCATE|[70]|Bytes:4096
+09:15:32.043 (1688888)|STATEMENT_EXECUTE|[71]
+09:15:32.044 (1700000)|SOQL_EXECUTE_BEGIN|[72]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003QQQ'
+09:15:32.045 (1711111)|SOQL_EXECUTE_EXPLAIN|[72]|cardinality:12|relative_selectivity:0.021|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:32.046 (1722222)|SOQL_EXECUTE_END|[72]|rows:12
+09:15:32.047 (1733333)|USER_DEBUG|[73]|FINER|Retrieved 12 contacts for account 001xx0000003QQQ
+09:15:32.048 (1744444)|HEAP_ALLOCATE|[74]|Bytes:1024
+09:15:32.049 (1755555)|VARIABLE_ASSIGNMENT|[75]|contactList=List{c001, c002, ..., c012}
+09:15:32.050 (1766667)|SOQL_EXECUTE_BEGIN|[76]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003RRR'
+09:15:32.051 (1777778)|SOQL_EXECUTE_EXPLAIN|[76]|cardinality:8|relative_selectivity:0.015|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:32.052 (1788889)|SOQL_EXECUTE_END|[76]|rows:8
+09:15:32.053 (1800000)|USER_DEBUG|[77]|FINER|Retrieved 8 contacts for account 001xx0000003RRR
+09:15:32.054 (1811111)|SOQL_EXECUTE_BEGIN|[78]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003SSS'
+09:15:32.055 (1822222)|SOQL_EXECUTE_EXPLAIN|[78]|cardinality:15|relative_selectivity:0.028|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:32.056 (1833333)|SOQL_EXECUTE_END|[78]|rows:15
+09:15:32.057 (1844444)|USER_DEBUG|[79]|FINER|Retrieved 15 contacts for account 001xx0000003SSS
+09:15:32.058 (1855555)|SOQL_EXECUTE_BEGIN|[80]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003TTT'
+09:15:32.059 (1866667)|SOQL_EXECUTE_EXPLAIN|[80]|cardinality:5|relative_selectivity:0.008|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:32.060 (1877778)|SOQL_EXECUTE_END|[80]|rows:5
+09:15:32.061 (1888889)|USER_DEBUG|[81]|FINER|Retrieved 5 contacts for account 001xx0000003TTT
+09:15:32.062 (1900000)|SOQL_EXECUTE_BEGIN|[82]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003UUU'
+09:15:32.063 (1911112)|SOQL_EXECUTE_EXPLAIN|[82]|cardinality:22|relative_selectivity:0.042|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:32.064 (1922223)|SOQL_EXECUTE_END|[82]|rows:22
+09:15:32.065 (1933334)|USER_DEBUG|[83]|FINER|Retrieved 22 contacts for account 001xx0000003UUU
+09:15:32.066 (1944445)|USER_DEBUG|[84]|DEBUG|N+1 SOQL detected: Same query executed 5 times in loop - consider bulkifying
+09:15:32.067 (1955556)|METHOD_EXIT|[85]|ContactHelper.getRelatedContacts
+09:15:32.068 (1966667)|SOQL_EXECUTE_BEGIN|[87]|SELECT Id, Name, Status__c FROM Account WHERE Industry = 'Technology' AND BillingCountry = 'United States'
+09:15:32.069 (1977778)|SOQL_EXECUTE_EXPLAIN|[87]|cardinality:47|relative_selectivity:0.089|fields_returned:3|index_name:Industry|index_selectivity:0.012
+09:15:32.070 (1988889)|SOQL_EXECUTE_END|[87]|rows:47
+09:15:32.071 (2000000)|HEAP_ALLOCATE|[88]|Bytes:4096
+09:15:32.072 (2011112)|USER_DEBUG|[89]|DEBUG|Starting integration callout for updated accounts
+09:15:32.073 (2022223)|STATEMENT_EXECUTE|[90]
+09:15:32.074 (2033334)|CALLOUT_REQUEST|[92]|https://api.company.com/v1/accounts/sync
+09:15:32.075 (2044445)|CALLOUT_REQUEST|Method:POST|Headers:{Authorization=Bearer xxx, Content-Type=application/json}
+09:15:32.076 (2055556)|CALLOUT_REQUEST|Body:{"accountIds":["001xx0000003QQQ","001xx0000003RRR","001xx0000003SSS","001xx0000003TTT","001xx0000003UUU"],"batchSize":50,"syncType":"full"}
+09:15:32.077 (2066667)|CALLOUT_RESPONSE|Status Code:200|Headers:{x-transaction-id=txn_abc123def456, content-type=application/json}
+09:15:32.078 (2077778)|CALLOUT_RESPONSE|Body:{"statusCode":200,"message":"Sync completed successfully","recordsProcessed":5,"duration":"342ms"}
+09:15:32.079 (2088889)|USER_DEBUG|[93]|DEBUG|Callout successful: 5 accounts synced
+09:15:32.080 (2100000)|VALIDATION_RULE|[95]|validation_rule|ValidateAccountBillingCity|Account|
+09:15:32.081 (2111112)|USER_DEBUG|[96]|DEBUG|Account validation rules passed
+09:15:32.082 (2122223)|NAMED_CREDENTIAL_REQUEST|[98]|POST|namedCredential|AccountSyncCredential|https://secure-api.example.com/accounts
+09:15:32.083 (2133334)|NAMED_CREDENTIAL_REQUEST|Headers:{Authorization=Bearer {!$Credential.Token}, X-Request-ID=req_789xyz}
+09:15:32.084 (2144445)|NAMED_CREDENTIAL_RESPONSE|Status Code:201|Headers:{location=/v1/accounts/001xx0000003QQQ}
+09:15:32.085 (2155556)|NAMED_CREDENTIAL_RESPONSE|Body:{"id":"001xx0000003QQQ","status":"synced","timestamp":"2026-03-30T09:15:32Z"}
+09:15:32.086 (2166667)|METHOD_EXIT|[99]|AccountService.synchronizeAccounts
+09:15:32.087 (2177778)|CODE_UNIT_FINISHED|AccountTrigger on Account (after insert)
+09:15:32.088 (2188889)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000003|ContactService on Account
+09:15:32.089 (2200000)|SYSTEM_MODE_ENTER
+09:15:32.090 (2211112)|USER_DEBUG|[102]|DEBUG|ContactService: Initializing contact sync for new accounts
+09:15:32.091 (2222223)|HEAP_ALLOCATE|[103]|Bytes:3072
+09:15:32.092 (2233334)|VARIABLE_SCOPE_BEGIN|[104]|contactList=List:25
+09:15:32.093 (2244445)|CONSTRUCTOR_ENTRY|[105]|List<Contact>
+09:15:32.094 (2255556)|CONSTRUCTOR_EXIT|[105]
+09:15:32.095 (2266667)|SOQL_EXECUTE_BEGIN|[106]|SELECT Id, Name, Email, Phone, AccountId FROM Contact WHERE AccountId IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU') AND Email != null
+09:15:32.096 (2277778)|SOQL_EXECUTE_EXPLAIN|[106]|cardinality:62|relative_selectivity:0.118|fields_returned:5|index_name:AccountId|index_selectivity:0.025
+09:15:32.097 (2288889)|SOQL_EXECUTE_END|[106]|rows:62
+09:15:32.098 (2300000)|USER_DEBUG|[107]|DEBUG|Retrieved 62 contacts with email addresses
+09:15:32.099 (2311112)|HEAP_ALLOCATE|[108]|Bytes:2560
+09:15:32.100 (2322223)|STATEMENT_EXECUTE|[109]
+09:15:32.101 (2333334)|DML_BEGIN|[110]|DML.update[Contact]|Number of rows processed:62
+09:15:32.102 (2344445)|DML_END|[110]|0.78
+09:15:32.103 (2355556)|USER_DEBUG|[111]|DEBUG|Updated 62 contacts with sync metadata
+09:15:32.104 (2366667)|SOQL_EXECUTE_BEGIN|[113]|SELECT Id, Name FROM RecordType WHERE SObjectType = 'Contact' AND DeveloperName = 'Customer'
+09:15:32.105 (2377778)|SOQL_EXECUTE_EXPLAIN|[113]|cardinality:1|relative_selectivity:0.002|fields_returned:2|index_name:DeveloperName|index_selectivity:0.001
+09:15:32.106 (2388889)|SOQL_EXECUTE_END|[113]|rows:1
+09:15:32.107 (2400000)|USER_DEBUG|[114]|DEBUG|RecordType lookup completed
+09:15:32.108 (2411112)|CODE_UNIT_FINISHED|ContactService on Account
+09:15:32.109 (2422223)|CODE_UNIT_STARTED|[EXTERNAL]|301xx0000000001|FlowStart: Account Sync Flow
+09:15:32.110 (2433334)|SYSTEM_MODE_ENTER
+09:15:32.111 (2444445)|FLOW_START_INTERVIEWS|[EXTERNAL]|Account Sync Flow
+09:15:32.112 (2455556)|FLOW_START_INTERVIEWS|Version Id:|0601xx0000000001
+09:15:32.113 (2466667)|USER_DEBUG|[116]|FLOW|Account Sync Flow|Interview started with input variables: accountIds=[001xx0000003QQQ, 001xx0000003RRR, 001xx0000003SSS, 001xx0000003TTT, 001xx0000003UUU]
+09:15:32.114 (2477778)|SOQL_EXECUTE_BEGIN|[FLOW]|SELECT Id, Name, Status__c, NextReviewDate__c FROM Account WHERE Id IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU')
+09:15:32.115 (2488889)|SOQL_EXECUTE_EXPLAIN|[FLOW]|cardinality:5|relative_selectivity:0.032|fields_returned:4|index_name:Id|index_selectivity:0.001
+09:15:32.116 (2500000)|SOQL_EXECUTE_END|[FLOW]|rows:5
+09:15:32.117 (2511112)|USER_DEBUG|[117]|FLOW|Account Sync Flow|Get account details element completed
+09:15:32.118 (2522223)|STATEMENT_EXECUTE|[118]
+09:15:32.119 (2533334)|DML_BEGIN|[FLOW]|DML.update[Account]|Number of rows processed:5
+09:15:32.120 (2544445)|DML_END|[FLOW]|0.34
+09:15:32.121 (2555556)|USER_DEBUG|[119]|FLOW|Account Sync Flow|Updated account statuses
+09:15:32.122 (2566667)|FLOW_START_INTERVIEWS|[EXTERNAL]|Interview finished with output variables: successCount=5, failureCount=0
+09:15:32.123 (2577778)|CODE_UNIT_FINISHED|FlowStart: Account Sync Flow
+09:15:33.124 (2588889)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000004|WF_AccountUpdateWorkflow on Account
+09:15:33.125 (2600000)|SYSTEM_MODE_ENTER
+09:15:33.126 (2611112)|USER_DEBUG|[121]|DEBUG|Evaluating workflow rules for account updates
+09:15:33.127 (2622223)|WF_RULE_EVAL|[122]|Rule Name: Notify Account Owner|Result: Evaluation succeeds
+09:15:33.128 (2633334)|USER_DEBUG|[123]|DEBUG|Rule 'Notify Account Owner' evaluated to true
+09:15:33.129 (2644445)|WF_RULE_EVAL|[124]|Rule Name: Create Partner Task|Result: Evaluation succeeds
+09:15:33.130 (2655556)|USER_DEBUG|[125]|DEBUG|Rule 'Create Partner Task' evaluated to true
+09:15:33.131 (2666667)|HEAP_ALLOCATE|[126]|Bytes:1536
+09:15:33.132 (2677778)|STATEMENT_EXECUTE|[127]
+09:15:33.133 (2688889)|DML_BEGIN|[128]|DML.insert[Task]|Number of rows processed:10
+09:15:33.134 (2700000)|DML_END|[128]|0.42
+09:15:33.135 (2711112)|USER_DEBUG|[129]|DEBUG|Inserted 10 partner notification tasks
+09:15:33.136 (2722223)|WF_RULE_EVAL|[130]|Rule Name: Update Industry Classification|Result: Evaluation succeeds
+09:15:33.137 (2733334)|USER_DEBUG|[131]|DEBUG|Rule 'Update Industry Classification' evaluated to true
+09:15:33.138 (2744445)|CODE_UNIT_FINISHED|WF_AccountUpdateWorkflow on Account
+09:15:33.139 (2755556)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000005|AccountTrigger on Account (before update)
+09:15:33.140 (2766667)|SYSTEM_MODE_ENTER
+09:15:33.141 (2777778)|USER_DEBUG|[133]|DEBUG|AccountTrigger before update: Processing 5 updated records
+09:15:33.142 (2788889)|HEAP_ALLOCATE|[134]|Bytes:2560
+09:15:33.143 (2800000)|VARIABLE_SCOPE_BEGIN|[135]|accountMap=Map:5
+09:15:33.144 (2811112)|SOQL_EXECUTE_BEGIN|[136]|SELECT Id, Name, BillingCity FROM Account WHERE Id IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU')
+09:15:33.145 (2822223)|SOQL_EXECUTE_EXPLAIN|[136]|cardinality:5|relative_selectivity:0.032|fields_returned:3|index_name:Id|index_selectivity:0.001
+09:15:33.146 (2833334)|SOQL_EXECUTE_END|[136]|rows:5
+09:15:33.147 (2844445)|USER_DEBUG|[137]|DEBUG|Validating account billing information
+09:15:33.148 (2855556)|STATEMENT_EXECUTE|[138]
+09:15:33.149 (2866667)|VALIDATION_RULE|[139]|validation_rule|ValidateAccountBillingState|Account|
+09:15:33.150 (2877778)|VARIABLE_SCOPE_BEGIN|[140]|oldAccountMap=Map:5
+09:15:33.151 (2888889)|STATEMENT_EXECUTE|[141]
+09:15:33.152 (2900000)|USER_DEBUG|[142]|FINE|Account 001xx0000003QQQ: Name changed from 'Acme Corp' to 'Acme Corporation'
+09:15:33.153 (2911112)|USER_DEBUG|[143]|FINER|Billing state validation passed for 001xx0000003QQQ
+09:15:33.154 (2922223)|USER_DEBUG|[144]|FINER|Phone format validation passed for 001xx0000003QQQ
+09:15:33.155 (2933334)|CODE_UNIT_FINISHED|AccountTrigger on Account (before update)
+09:15:33.156 (2944445)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000006|AccountTrigger on Account (after update)
+09:15:33.157 (2955556)|SYSTEM_MODE_ENTER
+09:15:33.158 (2966667)|USER_DEBUG|[146]|DEBUG|AccountTrigger after update: Syncing changes to external system
+09:15:33.159 (2977778)|HEAP_ALLOCATE|[147]|Bytes:3584
+09:15:33.160 (2988889)|METHOD_ENTRY|[148]|ContactHelper.refreshContactData(Set<Id> accountIds)
+09:15:33.161 (3000000)|VARIABLE_SCOPE_BEGIN|[148]|accountIds=Set:5
+09:15:33.162 (3011112)|SOQL_EXECUTE_BEGIN|[150]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003QQQ'
+09:15:33.163 (3022223)|SOQL_EXECUTE_EXPLAIN|[150]|cardinality:12|relative_selectivity:0.021|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:33.164 (3033334)|SOQL_EXECUTE_END|[150]|rows:12
+09:15:33.165 (3044445)|USER_DEBUG|[151]|FINE|Contact refresh for account 001xx0000003QQQ: 12 records
+09:15:33.166 (3055556)|SOQL_EXECUTE_BEGIN|[152]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003RRR'
+09:15:33.167 (3066667)|SOQL_EXECUTE_EXPLAIN|[152]|cardinality:8|relative_selectivity:0.015|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:33.168 (3077778)|SOQL_EXECUTE_END|[152]|rows:8
+09:15:33.169 (3088889)|USER_DEBUG|[153]|FINE|Contact refresh for account 001xx0000003RRR: 8 records
+09:15:33.170 (3100000)|SOQL_EXECUTE_BEGIN|[154]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003SSS'
+09:15:33.171 (3111112)|SOQL_EXECUTE_EXPLAIN|[154]|cardinality:15|relative_selectivity:0.028|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:33.172 (3122223)|SOQL_EXECUTE_END|[154]|rows:15
+09:15:33.173 (3133334)|USER_DEBUG|[155]|FINE|Contact refresh for account 001xx0000003SSS: 15 records
+09:15:33.174 (3144445)|SOQL_EXECUTE_BEGIN|[156]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003TTT'
+09:15:33.175 (3155556)|SOQL_EXECUTE_EXPLAIN|[156]|cardinality:5|relative_selectivity:0.008|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:33.176 (3166667)|SOQL_EXECUTE_END|[156]|rows:5
+09:15:33.177 (3177778)|USER_DEBUG|[157]|FINE|Contact refresh for account 001xx0000003TTT: 5 records
+09:15:33.178 (3188889)|SOQL_EXECUTE_BEGIN|[158]|SELECT Id, Name, Email FROM Contact WHERE AccountId = '001xx0000003UUU'
+09:15:33.179 (3200000)|SOQL_EXECUTE_EXPLAIN|[158]|cardinality:22|relative_selectivity:0.042|fields_returned:3|index_name:AccountId|index_selectivity:0.005
+09:15:33.180 (3211112)|SOQL_EXECUTE_END|[158]|rows:22
+09:15:33.181 (3222223)|USER_DEBUG|[159]|FINE|Contact refresh for account 001xx0000003UUU: 22 records
+09:15:33.182 (3233334)|USER_DEBUG|[160]|DEBUG|Detected N+1 SOQL pattern: Contact query executed 5 times
+09:15:33.183 (3244445)|HEAP_ALLOCATE|[161]|Bytes:2048
+09:15:33.184 (3255556)|STATEMENT_EXECUTE|[162]
+09:15:33.185 (3266667)|DML_BEGIN|[163]|DML.update[Contact]|Number of rows processed:62
+09:15:33.186 (3277778)|DML_END|[163]|0.92
+09:15:33.187 (3288889)|USER_DEBUG|[164]|DEBUG|Synced contact updates for account changes
+09:15:33.188 (3300000)|METHOD_EXIT|[165]|ContactHelper.refreshContactData
+09:15:33.189 (3311112)|STATEMENT_EXECUTE|[166]
+09:15:33.190 (3322223)|CALLOUT_REQUEST|[168]|https://api.company.com/v1/accounts/update
+09:15:33.191 (3333334)|CALLOUT_REQUEST|Method:PATCH|Headers:{Authorization=Bearer xxx, Content-Type=application/json}
+09:15:33.192 (3344445)|CALLOUT_REQUEST|Body:{"accountIds":["001xx0000003QQQ","001xx0000003RRR","001xx0000003SSS","001xx0000003TTT","001xx0000003UUU"],"updateType":"metadata","timestamp":"2026-03-30T09:15:33Z"}
+09:15:33.193 (3355556)|CALLOUT_RESPONSE|Status Code:200|Headers:{x-transaction-id=txn_xyz789abc, content-type=application/json}
+09:15:33.194 (3366667)|CALLOUT_RESPONSE|Body:{"statusCode":200,"message":"Update processed","recordsUpdated":5,"duration":"289ms"}
+09:15:33.195 (3377778)|USER_DEBUG|[169]|DEBUG|Account update callout completed successfully
+09:15:33.196 (3388889)|CODE_UNIT_FINISHED|AccountTrigger on Account (after update)
+09:15:33.197 (3400000)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000007|IntegrationCalloutService.processAccountSync()
+09:15:33.198 (3411112)|SYSTEM_MODE_ENTER
+09:15:33.199 (3422223)|USER_DEBUG|[171]|DEBUG|Starting async account sync service
+09:15:33.200 (3433334)|HEAP_ALLOCATE|[172]|Bytes:5120
+09:15:33.201 (3444445)|VARIABLE_SCOPE_BEGIN|[173]|syncRequest=Map:8
+09:15:33.202 (3455556)|CONSTRUCTOR_ENTRY|[174]|Map<String, Object>
+09:15:33.203 (3466667)|CONSTRUCTOR_EXIT|[174]
+09:15:33.204 (3477778)|SOQL_EXECUTE_BEGIN|[176]|SELECT Id, Name, BillingCity, BillingState, Phone, Website FROM Account WHERE RecordTypeId = '012xx0000000001' AND CreatedDate = THIS_WEEK
+09:15:33.205 (3488889)|SOQL_EXECUTE_EXPLAIN|[176]|cardinality:23|relative_selectivity:0.044|fields_returned:6|index_name:CreatedDate|index_selectivity:0.008
+09:15:33.206 (3500000)|SOQL_EXECUTE_END|[176]|rows:23
+09:15:33.207 (3511112)|USER_DEBUG|[177]|DEBUG|Retrieved 23 accounts created this week
+09:15:33.208 (3522223)|HEAP_ALLOCATE|[178]|Bytes:6144
+09:15:33.209 (3533334)|STATEMENT_EXECUTE|[179]
+09:15:33.210 (3544445)|SOQL_EXECUTE_BEGIN|[180]|SELECT Id, Name, Email, Phone FROM Contact WHERE AccountId IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU','001xx0000003VVV','001xx0000003WWW','001xx0000003XXX','001xx0000003YYY','001xx0000003ZZZ','001xx0000003AAA','001xx0000003BBB','001xx0000003CCC','001xx0000003DDD','001xx0000003EEE','001xx0000003FFF','001xx0000003GGG','001xx0000003HHH','001xx0000003III','001xx0000003JJJ','001xx0000003KKK','001xx0000003LLL','001xx0000003MMM')
+09:15:33.211 (3555556)|SOQL_EXECUTE_EXPLAIN|[180]|cardinality:187|relative_selectivity:0.355|fields_returned:4|index_name:AccountId|index_selectivity:0.089
+09:15:33.212 (3566667)|SOQL_EXECUTE_END|[180]|rows:187
+09:15:33.213 (3577778)|USER_DEBUG|[181]|DEBUG|Retrieved 187 contact records for sync
+09:15:33.214 (3588889)|HEAP_ALLOCATE|[182]|Bytes:8192
+09:15:33.215 (3600000)|VARIABLE_SCOPE_BEGIN|[183]|contactBatch=List:187
+09:15:33.216 (3611112)|STATEMENT_EXECUTE|[184]
+09:15:33.217 (3622223)|ENTERING_MANAGED_PKG|[185]|npe01
+09:15:33.218 (3633334)|USER_DEBUG|[186]|DEBUG|Entering NPSP managed package npe01 for contact batch processing
+09:15:33.219 (3644445)|HEAP_ALLOCATE|[187]|Bytes:4096
+09:15:33.220 (3655556)|VARIABLE_SCOPE_BEGIN|[188]|batchHelper=Object
+09:15:33.221 (3666667)|STATEMENT_EXECUTE|[189]
+09:15:33.222 (3677778)|CALLOUT_REQUEST|[191]|https://api.company.com/v1/batch/contacts/sync
+09:15:33.223 (3688889)|CALLOUT_REQUEST|Method:POST|Headers:{Authorization=Bearer xxx, Content-Type=application/json, X-Batch-ID=batch_2026033001, X-Request-Timeout=30000}
+09:15:33.224 (3700000)|CALLOUT_REQUEST|Body:{"totalRecords":187,"batchSize":50,"accountCount":23,"action":"full_sync","priority":"high","metadata":{"source":"apex_trigger","environment":"production"}}
+09:15:33.225 (3711112)|CALLOUT_RESPONSE|Status Code:202|Headers:{x-transaction-id=txn_456def789, content-type=application/json, location=/v1/batch/contacts/sync/batch_2026033001}
+09:15:33.226 (3722223)|CALLOUT_RESPONSE|Body:{"batchId":"batch_2026033001","status":"accepted","message":"Batch queued for processing","estimatedDuration":"15s","queuePosition":1}
+09:15:33.227 (3733334)|USER_DEBUG|[192]|DEBUG|Batch sync job submitted: batch_2026033001
+09:15:33.228 (3744445)|EXITING_MANAGED_PKG|[193]|npe01
+09:15:33.229 (3755556)|HEAP_ALLOCATE|[194]|Bytes:2048
+09:15:33.230 (3766667)|NAMED_CREDENTIAL_REQUEST|[195]|POST|namedCredential|PartnerIntegrationCredential|https://partner-api.example.com/v2/accounts/bulk
+09:15:33.231 (3777778)|NAMED_CREDENTIAL_REQUEST|Headers:{Authorization=Bearer {!$Credential.Token}, X-Batch-ID=batch_2026033001, Accept=application/json}
+09:15:33.232 (3788889)|NAMED_CREDENTIAL_RESPONSE|Status Code:202|Headers:{content-type=application/json, x-request-id=req_890abc123}
+09:15:33.233 (3800000)|NAMED_CREDENTIAL_RESPONSE|Body:{"requestId":"req_890abc123","status":"processing","eta":"2026-03-30T09:16:02Z"}
+09:15:33.234 (3811112)|USER_DEBUG|[196]|DEBUG|Partner API batch sync initiated
+09:15:33.235 (3822223)|STATEMENT_EXECUTE|[197]
+09:15:33.236 (3833334)|SOQL_EXECUTE_BEGIN|[198]|SELECT Id, Name FROM AccountTeamMember WHERE AccountId IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU','001xx0000003VVV','001xx0000003WWW','001xx0000003XXX','001xx0000003YYY','001xx0000003ZZZ','001xx0000003AAA','001xx0000003BBB','001xx0000003CCC','001xx0000003DDD','001xx0000003EEE','001xx0000003FFF','001xx0000003GGG','001xx0000003HHH','001xx0000003III','001xx0000003JJJ','001xx0000003KKK','001xx0000003LLL','001xx0000003MMM')
+09:15:33.237 (3844445)|SOQL_EXECUTE_EXPLAIN|[198]|cardinality:34|relative_selectivity:0.065|fields_returned:2|index_name:AccountId|index_selectivity:0.017
+09:15:33.238 (3855556)|SOQL_EXECUTE_END|[198]|rows:34
+09:15:33.239 (3866667)|USER_DEBUG|[199]|DEBUG|Retrieved 34 account team members
+09:15:33.240 (3877778)|HEAP_ALLOCATE|[200]|Bytes:2560
+09:15:33.241 (3888889)|STATEMENT_EXECUTE|[201]
+09:15:33.242 (3900000)|DML_BEGIN|[202]|DML.insert[AccountHistory]|Number of rows processed:23
+09:15:33.243 (3911112)|DML_END|[202]|0.56
+09:15:33.244 (3922223)|USER_DEBUG|[203]|DEBUG|Logged account sync history records
+09:15:33.245 (3933334)|CODE_UNIT_FINISHED|IntegrationCalloutService.processAccountSync()
+09:15:33.246 (3944445)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000008|AccountService.validateAccounts()
+09:15:33.247 (3955556)|SYSTEM_MODE_ENTER
+09:15:33.248 (3966667)|USER_DEBUG|[205]|FINEST|AccountService: Entering validation method
+09:15:33.249 (3977778)|HEAP_ALLOCATE|[206]|Bytes:3584
+09:15:33.250 (3988889)|VARIABLE_SCOPE_BEGIN|[207]|validationRules=Map:12
+09:15:33.251 (4000000)|CONSTRUCTOR_ENTRY|[208]|Map<String, ValidationRule__c>
+09:15:33.252 (4011112)|CONSTRUCTOR_EXIT|[208]
+09:15:33.253 (4022223)|SOQL_EXECUTE_BEGIN|[210]|SELECT Id, Name, BillingCity, BillingState, BillingCountry, Phone, Website, Industry FROM Account WHERE LastModifiedDate >= LAST_N_DAYS:1
+09:15:33.254 (4033334)|SOQL_EXECUTE_EXPLAIN|[210]|cardinality:45|relative_selectivity:0.085|fields_returned:8|index_name:LastModifiedDate|index_selectivity:0.015
+09:15:33.255 (4044445)|SOQL_EXECUTE_END|[210]|rows:45
+09:15:33.256 (4055556)|USER_DEBUG|[211]|FINEST|Retrieved 45 recently modified accounts for validation
+09:15:33.257 (4066667)|SOQL_EXECUTE_BEGIN|[212]|SELECT Id, ValidationRuleName__c, IsActive__c FROM ValidationRule__c WHERE IsActive__c = true
+09:15:33.258 (4077778)|SOQL_EXECUTE_EXPLAIN|[212]|cardinality:12|relative_selectivity:0.023|fields_returned:3|index_name:IsActive__c|index_selectivity:0.002
+09:15:33.259 (4088889)|SOQL_EXECUTE_END|[212]|rows:12
+09:15:33.260 (4100000)|USER_DEBUG|[213]|FINEST|Loaded 12 custom validation rules
+09:15:33.261 (4111112)|HEAP_ALLOCATE|[214]|Bytes:4096
+09:15:33.262 (4122223)|VARIABLE_SCOPE_BEGIN|[215]|validationErrors=List:0
+09:15:33.263 (4133334)|STATEMENT_EXECUTE|[216]
+09:15:33.264 (4144445)|USER_DEBUG|[217]|FINE|Validating 45 accounts against 12 rules
+09:15:34.265 (4155556)|STATEMENT_EXECUTE|[218]
+09:15:34.266 (4166667)|USER_DEBUG|[219]|FINEST|Account 001xx0000003QQQ: Name validation passed
+09:15:34.267 (4177778)|USER_DEBUG|[220]|FINEST|Account 001xx0000003QQQ: Email format validation passed
+09:15:34.268 (4188889)|USER_DEBUG|[221]|FINEST|Account 001xx0000003QQQ: State code validation passed
+09:15:34.269 (4200000)|STATEMENT_EXECUTE|[222]
+09:15:34.270 (4211112)|USER_DEBUG|[223]|FINE|Account 001xx0000003RRR: All validations passed
+09:15:34.271 (4222223)|USER_DEBUG|[224]|FINE|Account 001xx0000003SSS: All validations passed
+09:15:34.272 (4233334)|USER_DEBUG|[225]|FINER|Validation rule 'RequiredFields' passed for all 45 accounts
+09:15:34.273 (4244445)|USER_DEBUG|[226]|FINER|Validation rule 'UniqueAccountName' passed for all 45 accounts
+09:15:34.274 (4255556)|USER_DEBUG|[227]|FINER|Validation rule 'ValidPhoneFormat' passed for 44 out of 45 accounts
+09:15:34.275 (4266667)|METHOD_EXIT|[228]|AccountService.validateAccounts
+09:15:34.276 (4277778)|CODE_UNIT_FINISHED|AccountService.validateAccounts()
+09:15:34.277 (4288889)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000009|ContactHelper.updateContactRecords()
+09:15:34.278 (4300000)|SYSTEM_MODE_ENTER
+09:15:34.279 (4311112)|USER_DEBUG|[230]|DEBUG|ContactHelper: Processing contact updates
+09:15:34.280 (4322223)|HEAP_ALLOCATE|[231]|Bytes:5632
+09:15:34.281 (4333334)|VARIABLE_SCOPE_BEGIN|[232]|batchSize=Integer:50
+09:15:34.282 (4344445)|VARIABLE_ASSIGNMENT|[233]|batchSize=50
+09:15:34.283 (4355556)|STATEMENT_EXECUTE|[234]
+09:15:34.284 (4366667)|SOQL_EXECUTE_BEGIN|[235]|SELECT Id, FirstName, LastName, Email, Phone, MailingCity FROM Contact WHERE Email LIKE '%@company.com' AND IsDeleted = false
+09:15:34.285 (4377778)|SOQL_EXECUTE_EXPLAIN|[235]|cardinality:156|relative_selectivity:0.297|fields_returned:6|index_name:Email|index_selectivity:0.045
+09:15:34.286 (4388889)|SOQL_EXECUTE_END|[235]|rows:156
+09:15:34.287 (4400000)|USER_DEBUG|[236]|DEBUG|Retrieved 156 company email contacts
+09:15:34.288 (4411112)|HEAP_ALLOCATE|[237]|Bytes:3072
+09:15:34.289 (4422223)|VARIABLE_SCOPE_BEGIN|[238]|contactBatches=List:4
+09:15:34.290 (4433334)|CONSTRUCTOR_ENTRY|[239]|List<List<Contact>>
+09:15:34.291 (4444445)|CONSTRUCTOR_EXIT|[239]
+09:15:34.292 (4455556)|STATEMENT_EXECUTE|[240]
+09:15:34.293 (4466667)|DML_BEGIN|[241]|DML.update[Contact]|Number of rows processed:156
+09:15:34.294 (4477778)|DML_END|[241]|1.23
+09:15:34.295 (4488889)|USER_DEBUG|[242]|DEBUG|Updated 156 contact records with new metadata
+09:15:34.296 (4500000)|HEAP_ALLOCATE|[243]|Bytes:1024
+09:15:34.297 (4511112)|STATEMENT_EXECUTE|[244]
+09:15:34.298 (4522223)|SOQL_EXECUTE_BEGIN|[245]|SELECT Id, Name FROM RecordType WHERE SObjectType = 'Contact' AND IsActive = true
+09:15:34.299 (4533334)|SOQL_EXECUTE_EXPLAIN|[245]|cardinality:3|relative_selectivity:0.006|fields_returned:2|index_name:IsActive|index_selectivity:0.001
+09:15:34.300 (4544445)|SOQL_EXECUTE_END|[245]|rows:3
+09:15:34.301 (4555556)|USER_DEBUG|[246]|DEBUG|Retrieved 3 active contact record types
+09:15:34.302 (4566667)|VARIABLE_SCOPE_BEGIN|[247]|recordTypeMap=Map:3
+09:15:34.303 (4577778)|STATEMENT_EXECUTE|[248]
+09:15:34.304 (4588889)|USER_DEBUG|[249]|FINER|Building record type map for contact processing
+09:15:34.305 (4600000)|USER_DEBUG|[250]|FINER|Record type 'Customer': 001xx0000000ABC
+09:15:34.306 (4611112)|USER_DEBUG|[251]|FINER|Record type 'Prospect': 001xx0000000DEF
+09:15:34.307 (4622223)|USER_DEBUG|[252]|FINER|Record type 'Partner': 001xx0000000GHI
+09:15:34.308 (4633334)|METHOD_EXIT|[253]|ContactHelper.updateContactRecords
+09:15:34.309 (4644445)|CODE_UNIT_FINISHED|ContactHelper.updateContactRecords()
+09:15:34.310 (4655556)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000010|BatchAccountSync.execute()
+09:15:34.311 (4666667)|SYSTEM_MODE_ENTER
+09:15:34.312 (4677778)|USER_DEBUG|[255]|DEBUG|BatchAccountSync: Processing batch of accounts
+09:15:34.313 (4688889)|HEAP_ALLOCATE|[256]|Bytes:6400
+09:15:34.314 (4700000)|VARIABLE_SCOPE_BEGIN|[257]|recordCount=Integer:234
+09:15:34.315 (4711112)|STATEMENT_EXECUTE|[258]
+09:15:34.322 (4722223)|SOQL_EXECUTE_BEGIN|[259]|SELECT Id, Name, Status__c, Industry FROM Account LIMIT 2000 OFFSET 0
+09:15:34.323 (4733334)|SOQL_EXECUTE_EXPLAIN|[259]|cardinality:234|relative_selectivity:0.444|fields_returned:4|index_name:Id|index_selectivity:0.112
+09:15:34.324 (4744445)|SOQL_EXECUTE_END|[259]|rows:234
+09:15:34.325 (4755556)|USER_DEBUG|[260]|DEBUG|Processing 234 accounts in batch
+09:15:34.326 (4766667)|HEAP_ALLOCATE|[261]|Bytes:7680
+09:15:34.327 (4777778)|STATEMENT_EXECUTE|[262]
+09:15:34.328 (4788889)|DML_BEGIN|[263]|DML.update[Account]|Number of rows processed:234
+09:15:34.329 (4800000)|DML_END|[263]|2.14
+09:15:34.330 (4811112)|USER_DEBUG|[261]|DEBUG|Updated 234 accounts in batch operation
+09:15:34.331 (4822223)|METHOD_EXIT|[262]|BatchAccountSync.execute
+09:15:34.332 (4833334)|CODE_UNIT_FINISHED|BatchAccountSync.execute()
+09:15:34.333 (4844445)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000011|OpportunityHelper.syncOpportunities()
+09:15:34.334 (4855556)|SYSTEM_MODE_ENTER
+09:15:34.335 (4866667)|USER_DEBUG|[263]|DEBUG|OpportunityHelper: Syncing related opportunities
+09:15:34.336 (4877778)|HEAP_ALLOCATE|[264]|Bytes:4096
+09:15:34.337 (4888889)|VARIABLE_SCOPE_BEGIN|[265]|opportunityList=List:42
+09:15:34.338 (4900000)|STATEMENT_EXECUTE|[266]
+09:15:34.307 (4911112)|SOQL_EXECUTE_BEGIN|[267]|SELECT Id, Name, StageName, Amount FROM Opportunity WHERE AccountId IN ('001xx0000003QQQ','001xx0000003RRR','001xx0000003SSS','001xx0000003TTT','001xx0000003UUU')
+09:15:34.308 (4922223)|SOQL_EXECUTE_EXPLAIN|[267]|cardinality:42|relative_selectivity:0.080|fields_returned:4|index_name:AccountId|index_selectivity:0.021
+09:15:34.309 (4933334)|SOQL_EXECUTE_END|[267]|rows:42
+09:15:34.310 (4944445)|USER_DEBUG|[268]|DEBUG|Retrieved 42 opportunities for account sync
+09:15:34.311 (4955556)|VARIABLE_ASSIGNMENT|[269]|opportunityList=List{opp001, opp002, ..., opp042}
+09:15:34.312 (4966667)|STATEMENT_EXECUTE|[270]
+09:15:34.313 (4977778)|CALLOUT_REQUEST|[271]|https://api.company.com/v1/opportunities/sync
+09:15:34.314 (4988889)|CALLOUT_REQUEST|Method:POST|Headers:{Authorization=Bearer xxx, Content-Type=application/json}
+09:15:34.315 (5000000)|CALLOUT_REQUEST|Body:{"opportunities":42,"totalAmount":3450000,"currencyCode":"USD","syncType":"full"}
+09:15:34.316 (5011112)|CALLOUT_RESPONSE|Status Code:200|Headers:{x-transaction-id=txn_opp123456, content-type=application/json}
+09:15:34.317 (5022223)|CALLOUT_RESPONSE|Body:{"statusCode":200,"message":"Opportunity sync completed","recordsProcessed":42,"syncTimestamp":"2026-03-30T09:15:34Z"}
+09:15:34.318 (5033334)|USER_DEBUG|[272]|DEBUG|Opportunity sync callout completed successfully
+09:15:34.319 (5044445)|METHOD_EXIT|[273]|OpportunityHelper.syncOpportunities
+09:15:34.320 (5055556)|CODE_UNIT_FINISHED|OpportunityHelper.syncOpportunities()
+09:15:34.321 (5066667)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000012|TaskService.createFollowUpTasks()
+09:15:34.322 (5077778)|SYSTEM_MODE_ENTER
+09:15:34.323 (5088889)|USER_DEBUG|[274]|DEBUG|TaskService: Creating follow-up tasks for new accounts
+09:15:34.324 (5100000)|HEAP_ALLOCATE|[275]|Bytes:3328
+09:15:34.325 (5111112)|VARIABLE_SCOPE_BEGIN|[276]|taskList=List:15
+09:15:34.326 (5122223)|STATEMENT_EXECUTE|[277]
+09:15:34.327 (5133334)|CONSTRUCTOR_ENTRY|[278]|List<Task>
+09:15:34.328 (5144445)|CONSTRUCTOR_EXIT|[278]
+09:15:34.329 (5155556)|STATEMENT_EXECUTE|[279]
+09:15:34.330 (5166667)|DML_BEGIN|[280]|DML.insert[Task]|Number of rows processed:15
+09:15:34.331 (5177778)|DML_END|[280]|0.35
+09:15:34.332 (5188889)|USER_DEBUG|[281]|DEBUG|Inserted 15 follow-up tasks
+09:15:34.333 (5200000)|VARIABLE_SCOPE_BEGIN|[282]|auditLog=List:15
+09:15:34.334 (5211112)|STATEMENT_EXECUTE|[283]
+09:15:34.335 (5222223)|DML_BEGIN|[284]|DML.insert[AuditLog__c]|Number of rows processed:15
+09:15:34.336 (5233334)|DML_END|[284]|0.28
+09:15:34.337 (5244445)|USER_DEBUG|[285]|DEBUG|Created 15 audit log records for task creation
+09:15:34.338 (5255556)|METHOD_EXIT|[286]|TaskService.createFollowUpTasks
+09:15:34.339 (5266667)|CODE_UNIT_FINISHED|TaskService.createFollowUpTasks()
+09:15:34.340 (5277778)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000013|EventPublisher.publishEvents()
+09:15:34.341 (5288889)|SYSTEM_MODE_ENTER
+09:15:34.342 (5300000)|USER_DEBUG|[287]|DEBUG|EventPublisher: Publishing platform events for sync completion
+09:15:34.343 (5311112)|HEAP_ALLOCATE|[288]|Bytes:2816
+09:15:34.344 (5322223)|VARIABLE_SCOPE_BEGIN|[289]|events=List:5
+09:15:34.345 (5333334)|CONSTRUCTOR_ENTRY|[290]|List<AccountSync__e>
+09:15:34.346 (5344445)|CONSTRUCTOR_EXIT|[290]
+09:15:34.347 (5355556)|STATEMENT_EXECUTE|[291]
+09:15:34.348 (5366667)|USER_DEBUG|[292]|FINE|Created 5 account sync platform events
+09:15:34.349 (5377778)|STATEMENT_EXECUTE|[293]
+09:15:34.350 (5388889)|DML_BEGIN|[294]|DML.insertImmediate[AccountSync__e]|Number of rows processed:5
+09:15:34.351 (5400000)|DML_END|[294]|0.15
+09:15:34.352 (5411112)|USER_DEBUG|[295]|DEBUG|Published 5 platform events successfully
+09:15:34.353 (5422223)|METHOD_EXIT|[296]|EventPublisher.publishEvents
+09:15:34.354 (5433334)|CODE_UNIT_FINISHED|EventPublisher.publishEvents()
+09:15:34.355 (5444445)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000014|NotificationService.sendNotifications()
+09:15:34.356 (5455556)|SYSTEM_MODE_ENTER
+09:15:34.357 (5466667)|USER_DEBUG|[297]|DEBUG|NotificationService: Sending notifications to account owners
+09:15:34.358 (5477778)|HEAP_ALLOCATE|[297]|Bytes:3456
+09:15:34.359 (5488889)|VARIABLE_SCOPE_BEGIN|[298]|notificationList=List:8
+09:15:34.360 (5500000)|SOQL_EXECUTE_BEGIN|[299]|SELECT Id, Email FROM User WHERE Id IN ('005xx0000001AAA','005xx0000001BBB','005xx0000001CCC','005xx0000001DDD','005xx0000001EEE')
+09:15:34.361 (5511112)|SOQL_EXECUTE_EXPLAIN|[299]|cardinality:5|relative_selectivity:0.032|fields_returned:2|index_name:Id|index_selectivity:0.001
+09:15:34.362 (5522223)|SOQL_EXECUTE_END|[299]|rows:5
+09:15:34.363 (5533334)|USER_DEBUG|[300]|FINE|Retrieved 5 user email addresses for notifications
+09:15:34.364 (5544445)|STATEMENT_EXECUTE|[301]
+09:15:34.365 (5555556)|DML_BEGIN|[302]|DML.insert[TaskNotification__c]|Number of rows processed:8
+09:15:34.366 (5566667)|DML_END|[302]|0.32
+09:15:34.367 (5577778)|USER_DEBUG|[303]|DEBUG|Created 8 notification records
+09:15:34.368 (5588889)|CALLOUT_REQUEST|[305]|https://api.company.com/v1/notifications/send
+09:15:34.369 (5600000)|CALLOUT_REQUEST|Method:POST|Headers:{Authorization=Bearer xxx, Content-Type=application/json}
+09:15:34.370 (5611112)|CALLOUT_REQUEST|Body:{"notifications":8,"recipientCount":5,"type":"account_update","template":"AccountUpdateNotification"}
+09:15:34.371 (5622223)|CALLOUT_RESPONSE|Status Code:200|Headers:{x-transaction-id=txn_notif123, content-type=application/json}
+09:15:34.372 (5633334)|CALLOUT_RESPONSE|Body:{"statusCode":200,"message":"Notifications sent","count":8,"timestamp":"2026-03-30T09:15:34Z"}
+09:15:34.373 (5644445)|USER_DEBUG|[306]|DEBUG|Notifications sent via external service
+09:15:34.374 (5655556)|METHOD_EXIT|[307]|NotificationService.sendNotifications
+09:15:34.375 (5666667)|CODE_UNIT_FINISHED|NotificationService.sendNotifications()
+09:15:34.376 (5677778)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000015|CacheUtility.updateCaches()
+09:15:34.377 (5688889)|SYSTEM_MODE_ENTER
+09:15:34.378 (5700000)|USER_DEBUG|[308]|DEBUG|CacheUtility: Updating distributed caches
+09:15:34.379 (5711112)|HEAP_ALLOCATE|[309]|Bytes:2048
+09:15:34.380 (5722223)|VARIABLE_SCOPE_BEGIN|[310]|cacheKey=String:AccountSyncCache
+09:15:34.381 (5733334)|STATEMENT_EXECUTE|[311]
+09:15:34.382 (5744445)|SOQL_EXECUTE_BEGIN|[312]|SELECT Id, Name, LastSyncDate__c FROM Account WHERE LastModifiedDate >= LAST_N_HOURS:1
+09:15:34.383 (5755556)|SOQL_EXECUTE_EXPLAIN|[312]|cardinality:67|relative_selectivity:0.127|fields_returned:3|index_name:LastModifiedDate|index_selectivity:0.028
+09:15:34.384 (5766667)|SOQL_EXECUTE_END|[312]|rows:67
+09:15:34.385 (5777778)|USER_DEBUG|[313]|DEBUG|Retrieved 67 recently synced accounts for cache update
+09:15:34.386 (5788889)|STATEMENT_EXECUTE|[314]
+09:15:34.387 (5800000)|USER_DEBUG|[315]|FINER|Cache update completed: stored 67 account records
+09:15:34.388 (5811112)|METHOD_EXIT|[316]|CacheUtility.updateCaches
+09:15:34.389 (5822223)|CODE_UNIT_FINISHED|CacheUtility.updateCaches()
+09:15:34.390 (5833334)|SYSTEM_MODE_EXIT
+09:15:34.391 (5844445)|USER_DEBUG|[317]|DEBUG|Exiting system mode after all processing
+09:15:34.392 (5855556)|CODE_UNIT_FINISHED|Final Processing Unit
+09:15:34.393 (5866667)|EXECUTION_FINISHED
+09:15:34.394 (5877778)|LIMIT_USAGE_FOR_NS||Number of SOQL queries: 42 out of 100
+09:15:34.395 (5888889)|LIMIT_USAGE_FOR_NS||Number of query rows: 1124 out of 50000
+09:15:34.396 (5900000)|LIMIT_USAGE_FOR_NS||Number of DML statements: 18 out of 150
+09:15:34.397 (5911112)|LIMIT_USAGE_FOR_NS||Number of DML rows: 928 out of 10000
+09:15:34.398 (5922223)|LIMIT_USAGE_FOR_NS||Maximum CPU time on the Salesforce servers: 4234 out of 10000 (42%)
+09:15:34.399 (5933334)|LIMIT_USAGE_FOR_NS||Maximum heap size: 84992 out of 6000000 (1%)
+09:15:34.400 (5944445)|LIMIT_USAGE_FOR_NS||Number of callouts: 7 out of 100
+09:15:34.401 (5955556)|LIMIT_USAGE_FOR_NS||Number of Statement Executes: 4567 out of 200000
+09:15:34.402 (5966667)|LIMIT_USAGE_FOR_NS||Number of Publish Immediate list size: 5 out of 20000
+09:15:34.403 (5977778)|LIMIT_USAGE_FOR_NS||Number of Code Units: 20
+09:15:34.404 (5988889)|CUMULATIVE_LIMIT_USAGE
+09:15:34.405 (6000000)|CUMULATIVE_LIMIT_USAGE|Number of SOQL queries: 42
+09:15:34.406 (6011112)|CUMULATIVE_LIMIT_USAGE|Number of query rows: 1124
+09:15:34.407 (6022223)|CUMULATIVE_LIMIT_USAGE|Number of DML statements: 18
+09:15:34.408 (6033334)|CUMULATIVE_LIMIT_USAGE|Number of DML rows: 928
+09:15:34.409 (6044445)|CUMULATIVE_LIMIT_USAGE|Maximum CPU time on the Salesforce servers: 4234
+09:15:34.410 (6055556)|CUMULATIVE_LIMIT_USAGE|Maximum heap size: 84992
+09:15:34.411 (6066667)|CUMULATIVE_LIMIT_USAGE|Number of callouts: 7
+09:15:34.412 (6077778)|CUMULATIVE_LIMIT_USAGE|Number of Code Units: 20
+09:15:34.413 (6088889)|CUMULATIVE_LIMIT_USAGE|Number of Statement Executes: 4567
+09:15:35.414 (6100000)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000016|DataValidationService.performDeepValidation()
+09:15:35.415 (6111112)|SYSTEM_MODE_ENTER
+09:15:35.416 (6122223)|USER_DEBUG|[318]|DEBUG|DataValidationService: Starting deep validation of account data
+09:15:35.417 (6133334)|HEAP_ALLOCATE|[319]|Bytes:4864
+09:15:35.418 (6144445)|VARIABLE_SCOPE_BEGIN|[320]|validationMap=Map:45
+09:15:35.419 (6155556)|STATEMENT_EXECUTE|[321]
+09:15:35.420 (6166667)|SOQL_EXECUTE_BEGIN|[322]|SELECT Id, Name, Industry, AnnualRevenue, BillingCountry, BillingState, Type FROM Account WHERE AnnualRevenue > 1000000
+09:15:35.421 (6177778)|SOQL_EXECUTE_EXPLAIN|[322]|cardinality:89|relative_selectivity:0.169|fields_returned:7|index_name:AnnualRevenue|index_selectivity:0.042
+09:15:35.422 (6188889)|SOQL_EXECUTE_END|[322]|rows:89
+09:15:35.423 (6200000)|USER_DEBUG|[323]|DEBUG|Retrieved 89 high-value accounts
+09:15:35.424 (6211112)|HEAP_ALLOCATE|[324]|Bytes:3840
+09:15:35.425 (6222223)|STATEMENT_EXECUTE|[325]
+09:15:35.426 (6233334)|USER_DEBUG|[326]|FINER|Validating accounts for data quality metrics
+09:15:35.427 (6244445)|USER_DEBUG|[327]|FINER|Name field validation: 89 passed, 0 failed
+09:15:35.428 (6255556)|USER_DEBUG|[328]|FINER|Email field validation: 87 passed, 2 failed
+09:15:35.429 (6266667)|USER_DEBUG|[329]|FINER|Phone field validation: 85 passed, 4 failed
+09:15:35.430 (6277778)|USER_DEBUG|[330]|FINE|Data quality score: 97.3% for 89 high-value accounts
+09:15:35.431 (6288889)|METHOD_EXIT|[331]|DataValidationService.performDeepValidation
+09:15:35.432 (6300000)|CODE_UNIT_FINISHED|DataValidationService.performDeepValidation()
+09:15:35.433 (6311112)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000017|LeadConversionService.convertLeadsToContacts()
+09:15:35.434 (6322223)|SYSTEM_MODE_ENTER
+09:15:35.435 (6333334)|USER_DEBUG|[332]|DEBUG|LeadConversionService: Converting leads to contacts
+09:15:35.436 (6344445)|HEAP_ALLOCATE|[333]|Bytes:5760
+09:15:35.437 (6355556)|VARIABLE_SCOPE_BEGIN|[334]|leadRecords=List:28
+09:15:35.438 (6366667)|STATEMENT_EXECUTE|[335]
+09:15:35.439 (6377778)|SOQL_EXECUTE_BEGIN|[336]|SELECT Id, FirstName, LastName, Email, Phone, Company FROM Lead WHERE Status = 'Qualified' AND IsConverted = false
+09:15:35.440 (6388889)|SOQL_EXECUTE_EXPLAIN|[336]|cardinality:28|relative_selectivity:0.053|fields_returned:6|index_name:Status|index_selectivity:0.008
+09:15:35.441 (6400000)|SOQL_EXECUTE_END|[336]|rows:28
+09:15:35.442 (6411112)|USER_DEBUG|[337]|DEBUG|Retrieved 28 qualified leads for conversion
+09:15:35.443 (6422223)|HEAP_ALLOCATE|[338]|Bytes:2560
+09:15:35.444 (6433334)|VARIABLE_SCOPE_BEGIN|[339]|convertedLeads=List:28
+09:15:35.445 (6444445)|STATEMENT_EXECUTE|[340]
+09:15:35.446 (6455556)|DML_BEGIN|[341]|DML.insert[Contact]|Number of rows processed:28
+09:15:35.447 (6466667)|DML_END|[341]|0.89
+09:15:35.448 (6477778)|USER_DEBUG|[342]|DEBUG|Converted 28 leads to contact records
+09:15:35.449 (6488889)|SOQL_EXECUTE_BEGIN|[343]|SELECT Id, ConvertedContactId FROM Lead WHERE Id IN (SELECT Id FROM Lead WHERE Status = 'Qualified' AND IsConverted = false)
+09:15:35.450 (6500000)|SOQL_EXECUTE_EXPLAIN|[343]|cardinality:28|relative_selectivity:0.053|fields_returned:2|index_name:Id|index_selectivity:0.001
+09:15:35.451 (6511112)|SOQL_EXECUTE_END|[343]|rows:28
+09:15:35.452 (6522223)|USER_DEBUG|[344]|FINE|Verified converted contact links
+09:15:35.453 (6533334)|METHOD_EXIT|[345]|LeadConversionService.convertLeadsToContacts
+09:15:35.454 (6544445)|CODE_UNIT_FINISHED|LeadConversionService.convertLeadsToContacts()
+09:15:35.455 (6555556)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000018|ReportingService.generateSyncReport()
+09:15:35.456 (6566667)|SYSTEM_MODE_ENTER
+09:15:35.457 (6577778)|USER_DEBUG|[346]|DEBUG|ReportingService: Generating sync completion report
+09:15:35.458 (6588889)|HEAP_ALLOCATE|[347]|Bytes:6912
+09:15:35.459 (6600000)|VARIABLE_SCOPE_BEGIN|[348]|reportData=Map:15
+09:15:35.460 (6611112)|STATEMENT_EXECUTE|[349]
+09:15:35.461 (6622223)|SOQL_EXECUTE_BEGIN|[350]|SELECT COUNT() FROM Account WHERE CreatedDate = TODAY
+09:15:35.462 (6633334)|SOQL_EXECUTE_EXPLAIN|[350]|cardinality:5|relative_selectivity:0.001|fields_returned:1|index_name:CreatedDate|index_selectivity:0.008
+09:15:35.463 (6644445)|SOQL_EXECUTE_END|[350]|rows:1
+09:15:35.464 (6655556)|USER_DEBUG|[351]|DEBUG|Today's account creation count retrieved
+09:15:35.465 (6666667)|SOQL_EXECUTE_BEGIN|[352]|SELECT COUNT() FROM Contact WHERE CreatedDate = TODAY
+09:15:35.466 (6677778)|SOQL_EXECUTE_EXPLAIN|[352]|cardinality:1|relative_selectivity:0.001|fields_returned:1|index_name:CreatedDate|index_selectivity:0.002
+09:15:35.467 (6688889)|SOQL_EXECUTE_END|[352]|rows:1
+09:15:35.468 (6700000)|USER_DEBUG|[353]|DEBUG|Today's contact creation count retrieved
+09:15:35.469 (6711112)|SOQL_EXECUTE_BEGIN|[354]|SELECT COUNT() FROM Task WHERE CreatedDate = TODAY
+09:15:35.470 (6722223)|SOQL_EXECUTE_EXPLAIN|[354]|cardinality:1|relative_selectivity:0.001|fields_returned:1|index_name:CreatedDate|index_selectivity:0.001
+09:15:35.471 (6733334)|SOQL_EXECUTE_END|[354]|rows:1
+09:15:35.472 (6744445)|USER_DEBUG|[355]|DEBUG|Today's task creation count retrieved
+09:15:35.473 (6755556)|HEAP_ALLOCATE|[356]|Bytes:3072
+09:15:35.474 (6766667)|VARIABLE_SCOPE_BEGIN|[357]|reportMetrics=Map:8
+09:15:35.475 (6777778)|STATEMENT_EXECUTE|[358]
+09:15:35.476 (6788889)|VARIABLE_ASSIGNMENT|[359]|reportMetrics.accountsCreated=5
+09:15:35.477 (6800000)|VARIABLE_ASSIGNMENT|[360]|reportMetrics.contactsCreated=28
+09:15:35.478 (6811112)|VARIABLE_ASSIGNMENT|[361]|reportMetrics.tasksCreated=15
+09:15:35.479 (6822223)|USER_DEBUG|[362]|FINER|Report metrics compiled: Accounts=5, Contacts=28, Tasks=15
+09:15:35.480 (6833334)|DML_BEGIN|[363]|DML.insert[SyncReport__c]|Number of rows processed:1
+09:15:35.481 (6844445)|DML_END|[363]|0.42
+09:15:35.482 (6855556)|USER_DEBUG|[364]|DEBUG|Sync completion report saved
+09:15:35.483 (6866667)|METHOD_EXIT|[365]|ReportingService.generateSyncReport
+09:15:35.484 (6877778)|CODE_UNIT_FINISHED|ReportingService.generateSyncReport()
+09:15:35.485 (6888889)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000019|MetricsAggregator.aggregateMetrics()
+09:15:35.486 (6900000)|SYSTEM_MODE_ENTER
+09:15:35.487 (6911112)|USER_DEBUG|[366]|DEBUG|MetricsAggregator: Consolidating execution metrics
+09:15:35.488 (6922223)|HEAP_ALLOCATE|[367]|Bytes:4096
+09:15:35.489 (6933334)|VARIABLE_SCOPE_BEGIN|[368]|metricsData=Map:20
+09:15:35.490 (6944445)|CONSTRUCTOR_ENTRY|[369]|Map<String, Integer>
+09:15:35.491 (6955556)|CONSTRUCTOR_EXIT|[369]
+09:15:35.492 (6966667)|STATEMENT_EXECUTE|[370]
+09:15:35.493 (6977778)|SOQL_EXECUTE_BEGIN|[371]|SELECT Id, MetricName__c, MetricValue__c FROM Metrics__c WHERE CreatedDate >= LAST_N_HOURS:1
+09:15:35.494 (6988889)|SOQL_EXECUTE_EXPLAIN|[371]|cardinality:156|relative_selectivity:0.297|fields_returned:3|index_name:CreatedDate|index_selectivity:0.038
+09:15:35.495 (7000000)|SOQL_EXECUTE_END|[371]|rows:156
+09:15:35.496 (7011112)|USER_DEBUG|[372]|FINEST|Retrieved 156 metric records for aggregation
+09:15:35.497 (7022223)|USER_DEBUG|[373]|FINER|Average execution time: 342ms
+09:15:35.498 (7033334)|USER_DEBUG|[374]|FINER|Max execution time: 876ms
+09:15:35.499 (7044445)|USER_DEBUG|[375]|FINER|Min execution time: 87ms
+09:15:35.500 (7055556)|STATEMENT_EXECUTE|[376]
+09:15:35.501 (7066667)|DML_BEGIN|[377]|DML.update[Metrics__c]|Number of rows processed:156
+09:15:35.502 (7077778)|DML_END|[377]|1.34
+09:15:35.503 (7088889)|USER_DEBUG|[378]|DEBUG|Updated 156 metrics with aggregate values
+09:15:35.504 (7100000)|METHOD_EXIT|[379]|MetricsAggregator.aggregateMetrics
+09:15:35.505 (7111112)|CODE_UNIT_FINISHED|MetricsAggregator.aggregateMetrics()
+09:15:35.506 (7122223)|CODE_UNIT_STARTED|[EXTERNAL]|01q000000000020|FinalAuditService.logExecutionComplete()
+09:15:35.507 (7133334)|SYSTEM_MODE_ENTER
+09:15:35.508 (7144445)|USER_DEBUG|[380]|DEBUG|FinalAuditService: Logging execution completion
+09:15:35.509 (7155556)|HEAP_ALLOCATE|[381]|Bytes:2304
+09:15:35.510 (7166667)|VARIABLE_SCOPE_BEGIN|[382]|auditEntry=Map:6
+09:15:35.511 (7177778)|STATEMENT_EXECUTE|[383]
+09:15:35.512 (7188889)|VARIABLE_ASSIGNMENT|[384]|auditEntry.executionId=ExecId_20260330_091534
+09:15:35.513 (7200000)|VARIABLE_ASSIGNMENT|[385]|auditEntry.status=COMPLETED
+09:15:35.514 (7211112)|VARIABLE_ASSIGNMENT|[386]|auditEntry.recordsProcessed=389
+09:15:35.515 (7222223)|STATEMENT_EXECUTE|[387]
+09:15:35.516 (7233334)|DML_BEGIN|[388]|DML.insert[ExecutionAudit__c]|Number of rows processed:1
+09:15:35.517 (7244445)|DML_END|[388]|0.28
+09:15:35.518 (7255556)|USER_DEBUG|[389]|DEBUG|Execution audit log created
+09:15:35.519 (7266667)|CALLOUT_REQUEST|[391]|https://api.company.com/v1/execution/log
+09:15:35.520 (7277778)|CALLOUT_REQUEST|Method:POST|Headers:{Authorization=Bearer xxx, Content-Type=application/json}
+09:15:35.521 (7288889)|CALLOUT_REQUEST|Body:{"executionId":"ExecId_20260330_091534","status":"completed","duration":"2834ms","recordsProcessed":389,"timestamp":"2026-03-30T09:15:35Z"}
+09:15:35.522 (7300000)|CALLOUT_RESPONSE|Status Code:201|Headers:{x-transaction-id=txn_audit123, content-type=application/json}
+09:15:35.523 (7311112)|CALLOUT_RESPONSE|Body:{"statusCode":201,"message":"Execution log recorded","logId":"log_20260330_001","archiveDate":"2026-04-29T00:00:00Z"}
+09:15:35.524 (7322223)|USER_DEBUG|[392]|DEBUG|Execution log sent to external audit system
+09:15:35.525 (7333334)|METHOD_EXIT|[393]|FinalAuditService.logExecutionComplete
+09:15:35.526 (7344445)|CODE_UNIT_FINISHED|FinalAuditService.logExecutionComplete()
+09:15:35.527 (7355556)|SYSTEM_MODE_EXIT
+09:15:35.528 (7366667)|USER_DEBUG|[394]|DEBUG|All execution units completed
+09:15:35.529 (7377778)|CODE_UNIT_FINISHED|Root Processing Unit
+09:15:35.530 (7388889)|EXECUTION_FINISHED
+09:15:35.531 (7400000)|LIMIT_USAGE_FOR_NS||Number of SOQL queries: 52 out of 100
+09:15:35.532 (7411112)|LIMIT_USAGE_FOR_NS||Number of query rows: 1468 out of 50000
+09:15:35.533 (7422223)|LIMIT_USAGE_FOR_NS||Number of DML statements: 22 out of 150
+09:15:35.534 (7433334)|LIMIT_USAGE_FOR_NS||Number of DML rows: 1218 out of 10000
+09:15:35.535 (7444445)|LIMIT_USAGE_FOR_NS||Maximum CPU time on the Salesforce servers: 5678 out of 10000 (57%)
+09:15:35.536 (7455556)|LIMIT_USAGE_FOR_NS||Maximum heap size: 120576 out of 6000000 (2%)
+09:15:35.537 (7466667)|LIMIT_USAGE_FOR_NS||Number of callouts: 8 out of 100
+09:15:35.538 (7477778)|LIMIT_USAGE_FOR_NS||Number of Statement Executes: 5892 out of 200000
+09:15:35.539 (7488889)|LIMIT_USAGE_FOR_NS||Number of Publish Immediate list size: 5 out of 20000
+09:15:35.540 (7500000)|LIMIT_USAGE_FOR_NS||Number of Code Units: 25
+09:15:35.541 (7511112)|CUMULATIVE_LIMIT_USAGE
+09:15:35.542 (7522223)|CUMULATIVE_LIMIT_USAGE|Number of SOQL queries: 52
+09:15:35.543 (7533334)|CUMULATIVE_LIMIT_USAGE|Number of query rows: 1468
+09:15:35.544 (7544445)|CUMULATIVE_LIMIT_USAGE|Number of DML statements: 22
+09:15:35.545 (7555556)|CUMULATIVE_LIMIT_USAGE|Number of DML rows: 1218
+09:15:35.546 (7566667)|CUMULATIVE_LIMIT_USAGE|Maximum CPU time on the Salesforce servers: 5678
+09:15:35.547 (7577778)|CUMULATIVE_LIMIT_USAGE|Maximum heap size: 120576
+09:15:35.548 (7588889)|CUMULATIVE_LIMIT_USAGE|Number of callouts: 8
+09:15:35.549 (7600000)|CUMULATIVE_LIMIT_USAGE|Number of Code Units: 25
+09:15:35.550 (7611112)|CUMULATIVE_LIMIT_USAGE|Number of Statement Executes: 5892

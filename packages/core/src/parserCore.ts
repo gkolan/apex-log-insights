@@ -1,7 +1,8 @@
-import { performance } from 'node:perf_hooks';
+import { performance } from "node:perf_hooks";
 
-import { ApexLogParser } from './certinia/index.js';
-import type { EvidenceConfidence } from './phases.js';
+import { ApexLogParser } from "./certinia/index.js";
+import { parseSafeIntegerToken } from "./logFields.js";
+import type { EvidenceConfidence } from "./phases.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -13,7 +14,7 @@ type UnknownRecord = Record<string, unknown>;
  * - `'salesforce-page'` — pasted or scraped from a Salesforce Setup page.
  * - `'clipboard'` — pasted directly from the clipboard.
  */
-export type ParseSourceType = 'file' | 'salesforce-page' | 'clipboard';
+export type ParseSourceType = "file" | "salesforce-page" | "clipboard";
 
 /**
  * Options accepted by {@link parseLog}.
@@ -78,6 +79,9 @@ export interface NormalizedTimelineEvent {
   /** Event start timestamp in nanoseconds, or `null` if unavailable. */
   timestampNs: number | null;
 
+  /** True when malformed source timing was replaced only to preserve ordering. */
+  timestampIsInferred: boolean;
+
   /** Event end timestamp in nanoseconds, or `null` for instant events. */
   endNs: number | null;
 
@@ -96,6 +100,19 @@ export interface NormalizedTimelineEvent {
   /** ID of the parent event in the call tree, or `null` for root-level events. */
   parentId: string | null;
 
+  /** Whether a paired begin/end operation was complete or ended abnormally. */
+  pairingStatus:
+    | "not_applicable"
+    | "complete"
+    | "missing_end"
+    | "orphan_end"
+    | "closed_by_exception"
+    | "closed_at_truncation"
+    | "depth_limit";
+
+  durationIsPartial: boolean;
+  classification: "supported" | "unsupported";
+
   /** Evidence linking this event back to the raw debug log. */
   evidence: {
     /** First raw log line number that supports this event. */
@@ -107,6 +124,16 @@ export interface NormalizedTimelineEvent {
     /** How confidently this event maps to the raw log. */
     confidence: EvidenceConfidence;
   };
+}
+
+/** Aggregated parser evidence for input that could not be interpreted fully. */
+export interface NormalizedParsingDiagnostic {
+  type: "INVALID_LOG_LINE" | "UNSUPPORTED_EVENT" | "MALFORMED_EVENT";
+  count: number;
+  firstLine: number | null;
+  lastLine: number | null;
+  /** At most three parser-bounded raw examples. */
+  samples: string[];
 }
 
 /**
@@ -142,8 +169,20 @@ export interface NormalizedParseResult {
     id: string;
     summary: string;
     description: string;
+    occurrences: number;
+    firstTimestampNs: number | null;
+    lastTimestampNs: number | null;
     confidence: EvidenceConfidence;
   }>;
+
+  /** Structured, aggregated diagnostics copied from the parser boundary. */
+  parserDiagnostics: NormalizedParsingDiagnostic[];
+
+  /** Number of distinct legacy warning strings omitted after the safety cap. */
+  parsingErrorOverflowCount: number;
+
+  /** Issue occurrences represented only by the parser's overflow aggregate. */
+  logIssueOverflowCount: number;
 
   /** Flags indicating which optional features were active for this parse. */
   capabilities: {
@@ -153,19 +192,18 @@ export interface NormalizedParseResult {
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function asString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === "string" ? value : undefined;
 }
 
 function asNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const num = Number(value);
-    if (Number.isFinite(num)) return num;
-  }
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
+    return value;
+  if (typeof value === "string")
+    return parseSafeIntegerToken(value) ?? undefined;
   return undefined;
 }
 
@@ -174,7 +212,12 @@ function readPath(obj: unknown, keys: string[]): unknown {
   for (const key of keys) {
     // Skip null/undefined so fallback aliases are tried when the first key exists
     // but carries no usable value (e.g. parserResult.logIssues = null).
-    if (key in obj && obj[key] !== null && obj[key] !== undefined) return obj[key];
+    if (
+      Object.prototype.hasOwnProperty.call(obj, key) &&
+      obj[key] !== null &&
+      obj[key] !== undefined
+    )
+      return obj[key];
   }
   return undefined;
 }
@@ -182,67 +225,91 @@ function readPath(obj: unknown, keys: string[]): unknown {
 async function runVendorParser(logText: string): Promise<unknown> {
   const parser = new ApexLogParser() as unknown as Record<string, unknown>;
 
-  if (typeof parser.parse === 'function') {
+  if (typeof parser.parse === "function") {
     return (parser.parse as (input: string) => unknown)(logText);
   }
-  throw new Error('Parser contract violation: ApexLogParser.parse() is required.');
-}
-
-function preprocessLogText(logText: string): string {
-  return logText
-    .split(/\r?\n/)
-    .map((line) => {
-      const shortDml = line.match(
-        /^(\d{2}:\d{2}:\d{2}\.\d+\s+\(\d+\)\|DML_BEGIN\|\[[^\]]+\])\|(Insert|Update|Upsert|Delete|Undelete|Merge)\|([^|]+)\|(\d+)$/,
-      );
-      if (shortDml) {
-        const [, prefix, operation, sObject, rows] = shortDml;
-        return `${prefix}|Op:${operation}|Type:${sObject}|Rows:${rows}`;
-      }
-      return line;
-    })
-    .join('\n');
+  throw new Error(
+    "Parser contract violation: ApexLogParser.parse() is required.",
+  );
 }
 
 function normalizeTimeline(parserResult: unknown): NormalizedTimelineEvent[] {
   const nodes: NormalizedTimelineEvent[] = [];
+  const rootChildren = readPath(parserResult, ["children"]);
+  const stack: Array<{ node: unknown; parentId: string | null }> =
+    Array.isArray(rootChildren)
+      ? rootChildren.map((node) => ({ node, parentId: null })).reverse()
+      : [];
 
-  const visit = (node: unknown, parentId: string | null) => {
-    const children = Array.isArray(readPath(node, ['children'])) ? (readPath(node, ['children']) as unknown[]) : [];
-    for (let index = 0; index < children.length; index += 1) {
-      const child = children[index];
-      const type = asString(readPath(child, ['type'])) ?? 'UNKNOWN';
-      const timestampNs = asNumber(readPath(child, ['timestamp'])) ?? null;
-      const endNs = asNumber(readPath(child, ['exitStamp'])) ?? null;
-      const durationObj = readPath(child, ['duration']);
-      const durationNs = asNumber(isRecord(durationObj) ? (durationObj as UnknownRecord).total : undefined) ?? null;
-      const lineNumber = asNumber(readPath(child, ['lineNumber'])) ?? null;
-      const text = asString(readPath(child, ['text'])) ?? null;
-      const namespace = asString(readPath(child, ['namespace'])) ?? null;
-      const id = `event-${nodes.length + 1}`;
-      const event: NormalizedTimelineEvent = {
-        id,
-        type,
-        timestampNs,
-        endNs,
-        durationNs,
-        lineNumber,
-        text,
-        namespace,
-        parentId,
-        evidence: {
-          startLine: lineNumber,
-          endLine: lineNumber,
-          ...(lineNumber !== null ? { lineIds: [lineNumber] } : {}),
-          confidence: 'direct',
-        },
-      };
-      nodes.push(event);
-      visit(child, id);
+  while (stack.length > 0) {
+    const frame = stack.pop()!;
+    const child = frame.node;
+    const type = asString(readPath(child, ["type"])) ?? "UNKNOWN";
+    const timestampNs = asNumber(readPath(child, ["timestamp"])) ?? null;
+    const endNs = asNumber(readPath(child, ["exitStamp"])) ?? null;
+    const lineNumber = asNumber(readPath(child, ["lineNumber"])) ?? null;
+    const rawLineNumber = asNumber(readPath(child, ["rawLineNumber"])) ?? null;
+    const exitRawLineNumber =
+      asNumber(readPath(child, ["exitRawLineNumber"])) ?? null;
+    const text = asString(readPath(child, ["text"])) ?? null;
+    const namespace = asString(readPath(child, ["namespace"])) ?? null;
+    const pairingStatus =
+      (asString(readPath(child, ["pairingStatus"])) as
+        NormalizedTimelineEvent["pairingStatus"] | undefined) ??
+      "not_applicable";
+    const durationIsPartial =
+      readPath(child, ["durationIsPartial"]) === true ||
+      (timestampNs !== null && endNs !== null && endNs < timestampNs) ||
+      !["not_applicable", "complete"].includes(pairingStatus);
+    const durationNs =
+      !durationIsPartial &&
+      timestampNs !== null &&
+      endNs !== null &&
+      endNs >= timestampNs
+        ? endNs - timestampNs
+        : null;
+    const id = `event-${nodes.length + 1}`;
+    const event: NormalizedTimelineEvent = {
+      id,
+      type,
+      timestampNs,
+      timestampIsInferred: readPath(child, ["timestampIsInferred"]) === true,
+      endNs,
+      durationNs,
+      lineNumber,
+      text,
+      namespace,
+      parentId: frame.parentId,
+      pairingStatus,
+      durationIsPartial,
+      classification:
+        readPath(child, ["classification"]) === "unsupported"
+          ? "unsupported"
+          : "supported",
+      evidence: {
+        startLine: rawLineNumber,
+        endLine: exitRawLineNumber ?? rawLineNumber,
+        ...(rawLineNumber !== null
+          ? {
+              lineIds:
+                exitRawLineNumber !== null &&
+                exitRawLineNumber !== rawLineNumber
+                  ? [rawLineNumber, exitRawLineNumber]
+                  : [rawLineNumber],
+            }
+          : {}),
+        confidence: "direct",
+      },
+    };
+    nodes.push(event);
+
+    const children = readPath(child, ["children"]);
+    if (Array.isArray(children)) {
+      for (let index = children.length - 1; index >= 0; index -= 1) {
+        stack.push({ node: children[index], parentId: id });
+      }
     }
-  };
-
-  visit(parserResult, null);
+  }
   // Extract the trailing integer from IDs like "event-10" for numeric tie-breaking,
   // so "event-10" correctly sorts after "event-2" instead of before it.
   const idSortKey = (id: string): number => {
@@ -258,24 +325,76 @@ function normalizeTimeline(parserResult: unknown): NormalizedTimelineEvent[] {
   return nodes;
 }
 
-function normalizeIssues(parserResult: unknown): NormalizedParseResult['issues'] {
-  const issues = Array.isArray(readPath(parserResult, ['logIssues']))
-    ? (readPath(parserResult, ['logIssues']) as unknown[])
+function normalizeIssues(
+  parserResult: unknown,
+): NormalizedParseResult["issues"] {
+  const issues = Array.isArray(readPath(parserResult, ["logIssues"]))
+    ? (readPath(parserResult, ["logIssues"]) as unknown[])
     : [];
 
-  return issues.map((issue, index) => ({
-    id: `issue-${index + 1}`,
-    summary: asString(readPath(issue, ['summary'])) ?? 'Log issue',
-    description: asString(readPath(issue, ['description'])) ?? '',
-    confidence: 'direct',
-  }));
+  return issues.map((issue, index) => {
+    const firstTimestampNs = asNumber(readPath(issue, ["startTime"])) ?? null;
+    return {
+      id: `issue-${index + 1}`,
+      summary: asString(readPath(issue, ["summary"])) ?? "Log issue",
+      description: asString(readPath(issue, ["description"])) ?? "",
+      occurrences: asNumber(readPath(issue, ["occurrences"])) ?? 1,
+      firstTimestampNs,
+      lastTimestampNs:
+        asNumber(readPath(issue, ["lastTime"])) ?? firstTimestampNs,
+      confidence: "direct",
+    };
+  });
+}
+
+function normalizeParsingDiagnostics(
+  parserResult: unknown,
+): NormalizedParsingDiagnostic[] {
+  const allowedTypes = new Set<NormalizedParsingDiagnostic["type"]>([
+    "INVALID_LOG_LINE",
+    "UNSUPPORTED_EVENT",
+    "MALFORMED_EVENT",
+  ]);
+  const diagnostics = readPath(parserResult, ["parsingDiagnostics"]);
+  if (!Array.isArray(diagnostics)) return [];
+  const lineNumber = (value: unknown): number | null => {
+    const parsed = asNumber(value);
+    return parsed !== undefined && parsed >= 1 ? Math.floor(parsed) : null;
+  };
+
+  return diagnostics.flatMap((entry) => {
+    const type = asString(readPath(entry, ["type"]));
+    if (
+      !type ||
+      !allowedTypes.has(type as NormalizedParsingDiagnostic["type"])
+    ) {
+      return [];
+    }
+    const samples = readPath(entry, ["samples"]);
+    return [
+      {
+        type: type as NormalizedParsingDiagnostic["type"],
+        count: Math.max(
+          0,
+          Math.floor(asNumber(readPath(entry, ["count"])) ?? 0),
+        ),
+        firstLine: lineNumber(readPath(entry, ["firstLine"])),
+        lastLine: lineNumber(readPath(entry, ["lastLine"])),
+        samples: Array.isArray(samples)
+          ? samples
+              .filter((sample): sample is string => typeof sample === "string")
+              .map((sample) => sample.slice(0, 500))
+              .slice(0, 3)
+          : [],
+      },
+    ];
+  });
 }
 
 /**
  * High-level entry point for parsing a Salesforce Apex debug log.
  *
- * Preprocesses the raw log text to normalise vendor-specific quirks,
- * runs the Certinia vendor parser, then normalises the result into a
+ * Runs the Certinia parser, then normalises the result into a
  * flat, chronological timeline with evidence metadata.
  *
  * @param logText - The full text content of the Apex debug log.
@@ -295,20 +414,23 @@ function normalizeIssues(parserResult: unknown): NormalizedParseResult['issues']
  * console.log(result.normalizedTimeline.length, 'events');
  * ```
  */
-export async function parseLog(logText: string, options: ParseLogOptions = {}): Promise<NormalizedParseResult> {
+export async function parseLog(
+  logText: string,
+  options: ParseLogOptions = {},
+): Promise<NormalizedParseResult> {
   const {
-    sourceName = 'inline.log',
-    sourceType = 'file',
+    sourceName = "inline.log",
+    sourceType = "file",
     includeRawLines = false,
     enablePhaseInference = true,
   } = options;
 
   const t0 = performance.now();
-  const parserResult = await runVendorParser(preprocessLogText(logText));
+  const parserResult = await runVendorParser(logText);
   const parseTimeMs = Math.round((performance.now() - t0) * 1000) / 1000;
 
   const rawLines = includeRawLines
-    ? logText.split(/\r?\n/).map((text, index) => ({
+    ? logText.split(/\r\n|\r|\n/).map((text, index) => ({
         id: index + 1,
         lineNumber: index + 1,
         text,
@@ -323,6 +445,19 @@ export async function parseLog(logText: string, options: ParseLogOptions = {}): 
     ...(rawLines ? { rawLines } : {}),
     normalizedTimeline: normalizeTimeline(parserResult),
     issues: normalizeIssues(parserResult),
+    parserDiagnostics: normalizeParsingDiagnostics(parserResult),
+    parsingErrorOverflowCount: Math.max(
+      0,
+      Math.floor(
+        asNumber(readPath(parserResult, ["parsingErrorOverflowCount"])) ?? 0,
+      ),
+    ),
+    logIssueOverflowCount: Math.max(
+      0,
+      Math.floor(
+        asNumber(readPath(parserResult, ["logIssueOverflowCount"])) ?? 0,
+      ),
+    ),
     capabilities: {
       includeRawLines,
       phaseInferenceEnabled: enablePhaseInference,

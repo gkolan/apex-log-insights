@@ -8,7 +8,12 @@ function pushUnique(list, value) {
 }
 
 function basename(value) {
-  return String(value || "").split("/").filter(Boolean).pop() || "";
+  return (
+    String(value || "")
+      .split("/")
+      .filter(Boolean)
+      .pop() || ""
+  );
 }
 
 function reportCandidates(availableReports = []) {
@@ -24,7 +29,9 @@ function reportCandidates(availableReports = []) {
 }
 
 function stripUrlFragments(value) {
-  return String(value || "").split("#")[0].split("?")[0];
+  return String(value || "")
+    .split("#")[0]
+    .split("?")[0];
 }
 
 export function parseDirectoryListing(html, basePath = REPORTS_PATH) {
@@ -32,7 +39,8 @@ export function parseDirectoryListing(html, basePath = REPORTS_PATH) {
   const matches = String(html || "").matchAll(/href=["']([^"']+)["']/gi);
   for (const match of matches) {
     const href = stripUrlFragments(match[1]);
-    if (!href || href === "/" || href === "../" || !href.endsWith(".json")) continue;
+    if (!href || href === "/" || href === "../" || !href.endsWith(".json"))
+      continue;
     if (href.startsWith("http://") || href.startsWith("https://")) continue;
     pushUnique(out, href.includes("/") ? href : `${basePath}${href}`);
   }
@@ -80,7 +88,9 @@ function rawLogCandidates(report) {
 }
 
 async function loadRawLines(report) {
-  const embedded = Array.isArray(report?.rawLog?.lines) ? report.rawLog.lines : [];
+  const embedded = Array.isArray(report?.rawLog?.lines)
+    ? report.rawLog.lines
+    : [];
   if (embedded.length > 0) {
     return embedded.map((entry, index) => ({
       number: Number(entry?.lineNumber ?? entry?.line ?? index + 1),
@@ -91,7 +101,7 @@ async function loadRawLines(report) {
   for (const url of rawLogCandidates(report)) {
     const text = await tryFetchText(url);
     if (!text) continue;
-    return text.split(/\r?\n/).map((line, index) => ({
+    return text.split(/\r\n|\r|\n/).map((line, index) => ({
       number: index + 1,
       text: line,
     }));

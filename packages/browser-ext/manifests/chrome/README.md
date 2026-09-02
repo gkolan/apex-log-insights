@@ -1,6 +1,6 @@
-# Chrome Manifest
+# Chrome manifest
 
-This `manifest.json` is the Manifest V3 configuration for the Chrome Web Store.
+Use this page when changing or loading the Chrome manifest. The goal is to preserve Chrome-specific background behavior and produce an unpacked extension from the correct source manifest.
 
 ## Key differences from other browsers
 

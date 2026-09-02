@@ -36,7 +36,7 @@ export function redactLine(line, settings) {
 
   if (settings.email) {
     // Standard email pattern — word boundaries keep it from over-matching inside URLs
-    s = s.replace(/\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b/g, "[EMAIL]");
+    s = s.replace(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g, "[EMAIL]");
   }
   if (settings.sfId) {
     // 15 or 18 char Salesforce record IDs:
@@ -64,7 +64,7 @@ export function redactLine(line, settings) {
       const masked = maskName(name);
       try {
         s = s.replace(new RegExp(escaped, "gi"), masked);
-      } catch (_) {
+      } catch {
         // Skip invalid patterns gracefully
       }
     }

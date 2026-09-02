@@ -1,8 +1,8 @@
 // Governor limit timeline and delta computation.
 // Used by execution.ts to measure governor usage changes across execution phases.
 
-import type { UnknownRecord, GovernorDelta } from './types.js';
-import { isRecord, asNumber, readPath } from './utils.js';
+import type { UnknownRecord, GovernorDelta } from "./types.js";
+import { isRecord, asNumber, readPath } from "./utils.js";
 
 // ─── Governor Limit Timeline ─────────────────────────────────────────────────
 
@@ -11,6 +11,25 @@ export interface LimitTimelineEntry {
   soql: number | null;
   soqlRows: number | null;
   dml: number | null;
+}
+
+function upperBoundTimestamp(
+  timeline: LimitTimelineEntry[],
+  timestampNs: number,
+): number {
+  let low = 0;
+  let high = timeline.length;
+
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (timeline[middle]!.timestampNs <= timestampNs) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low;
 }
 
 /**
@@ -22,24 +41,32 @@ export interface LimitTimelineEntry {
  * @param snapshotsRaw - Array of raw snapshot objects from the log
  * @returns Array of LimitTimelineEntry objects sorted by timestamp
  */
-export function buildLimitTimeline(snapshotsRaw: unknown[]): LimitTimelineEntry[] {
+export function buildLimitTimeline(
+  snapshotsRaw: unknown[],
+): LimitTimelineEntry[] {
   const entries: LimitTimelineEntry[] = [];
 
   for (const snap of snapshotsRaw) {
     if (!isRecord(snap)) continue;
-    const ts = asNumber(readPath(snap, ['timestamp'])) ?? 0;
-    const limits = readPath(snap, ['limits']);
+    const ts = asNumber(readPath(snap, ["timestamp"])) ?? 0;
+    const limits = readPath(snap, ["limits"]);
     if (!isRecord(limits)) continue;
 
-    const soqlQ = readPath(limits, ['soqlQueries']);
-    const queryRows = readPath(limits, ['queryRows']);
-    const dmlS = readPath(limits, ['dmlStatements']);
+    const soqlQ = readPath(limits, ["soqlQueries"]);
+    const queryRows = readPath(limits, ["queryRows"]);
+    const dmlS = readPath(limits, ["dmlStatements"]);
 
     entries.push({
       timestampNs: ts,
-      soql: isRecord(soqlQ) ? asNumber((soqlQ as UnknownRecord).used) ?? null : null,
-      soqlRows: isRecord(queryRows) ? asNumber((queryRows as UnknownRecord).used) ?? null : null,
-      dml: isRecord(dmlS) ? asNumber((dmlS as UnknownRecord).used) ?? null : null,
+      soql: isRecord(soqlQ)
+        ? (asNumber((soqlQ as UnknownRecord).used) ?? null)
+        : null,
+      soqlRows: isRecord(queryRows)
+        ? (asNumber((queryRows as UnknownRecord).used) ?? null)
+        : null,
+      dml: isRecord(dmlS)
+        ? (asNumber((dmlS as UnknownRecord).used) ?? null)
+        : null,
     });
   }
 
@@ -74,28 +101,16 @@ export function computeGovernorDelta(
     };
   }
 
-  // Find the closest snapshot before and after/at the phase window
-  let before: LimitTimelineEntry | null = null;
-  let after: LimitTimelineEntry | null = null;
-
-  for (const entry of timeline) {
-    if (entry.timestampNs <= startNs) {
-      before = entry;
-    }
-    if (entry.timestampNs >= startNs && entry.timestampNs <= endNs) {
-      after = entry; // keep updating — last one in the window wins
-    }
-  }
-
-  // If no snapshot in the window, look for the first one after
-  if (!after) {
-    for (const entry of timeline) {
-      if (entry.timestampNs > endNs) {
-        after = entry;
-        break;
-      }
-    }
-  }
+  // The timeline is sorted by buildLimitTimeline(). Binary searches retain the
+  // prior selection rules without rescanning every snapshot for every phase.
+  const beforeInsertionIndex = upperBoundTimestamp(timeline, startNs);
+  const before = timeline[beforeInsertionIndex - 1] ?? null;
+  const endInsertionIndex = upperBoundTimestamp(timeline, endNs);
+  const lastAtOrBeforeEnd = timeline[endInsertionIndex - 1] ?? null;
+  const after =
+    lastAtOrBeforeEnd && lastAtOrBeforeEnd.timestampNs >= startNs
+      ? lastAtOrBeforeEnd
+      : (timeline[endInsertionIndex] ?? null);
 
   return {
     soqlBefore: before?.soql ?? null,

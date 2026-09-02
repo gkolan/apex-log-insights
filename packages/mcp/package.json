@@ -1,6 +1,6 @@
 {
   "name": "@apex-log-insights/mcp",
-  "version": "1.1.33",
+  "version": "1.2.0",
   "description": "MCP server for Apex Log Insights — Apex debug log analysis with Claude, Cursor, and other AI tools.",
   "author": "Gautam Kolan",
   "license": "MIT",
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@apex-log-insights/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
