@@ -28,6 +28,7 @@
         "__tests__/**/*.test.ts",
         "viewer/app.js",
         "viewer/sw.js",
+        "viewer/register-sw.js",
         "eslint.config.mjs",
         "eslint-security.config.mjs",
         "vitest.config.mts"

@@ -2,6 +2,7 @@ const CACHE = "apex-log-insights-v1.2.0";
 const ASSETS = [
   "./index.html",
   "./app.js",
+  "./register-sw.js",
   "./styles.css",
   "./apex-parser-worker.js",
   "./modules/normalize-report.js",

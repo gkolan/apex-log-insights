@@ -104,6 +104,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Removed the duplicate shebang from the built MCP server. `tsup` injected a banner on top of the shebang already present in `packages/mcp/src/server.ts`, so Node rejected `dist/server.js` with a syntax error and `apex-log-mcp` failed to start on every invocation. Added tests that check the built entry point, which the source-only suite could not catch.
+- Moved the standalone viewer's service-worker registration from an inline script into `viewer/register-sw.js`. The CLI serves the viewer under `script-src 'self'`, which blocked the inline script, so the service worker never registered and offline caching did nothing.
+
 - Preserved unknown Salesforce event types as generic timeline evidence instead of dropping them, retained complete exception messages containing `|`, separated Apex source lines from raw-log evidence lines, and reported parser nesting-limit truncation
 - Added the extension worker timeout already used by the offline viewer, streamed comparison-file reads where supported, and delayed comparison-download URL cleanup for Firefox reliability
 - Completed the offline service-worker asset graph and versioned its cache with the release, preventing missing modules or stale UI after offline upgrades
