@@ -98,5 +98,5 @@ Thumbs.db
 !fixtures/
 !fixtures/**/*.log
 
-# Local research exports; Markdown research notes remain versionable.
-research/*.pdf
+# Local research
+/research/
