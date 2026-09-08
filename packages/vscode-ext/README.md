@@ -11,6 +11,9 @@ The extension is a source-build release candidate, not a verified Marketplace re
 The packaged VSIX includes `THIRD-PARTY-NOTICES.md` with the license terms for
 the vendored parser code.
 
+For source builds, the package's build command compiles the shared core package
+first, so it works in a fresh clone without generated `dist/` files.
+
 ## Analyze a log
 
 1. Install the candidate with **Extensions: Install from VSIX…**.

@@ -49,23 +49,23 @@ Fix the lowest layer that first becomes incorrect. Do not add renderer logic to 
 
 ## Development commands
 
-| Command              | Purpose                                         |
-| -------------------- | ----------------------------------------------- |
-| `pnpm dev:cli`       | Watch the CLI package                           |
-| `pnpm dev:mcp`       | Watch the MCP package                           |
-| `pnpm dev:vscode`    | Watch the VS Code extension host bundle         |
-| `pnpm test:vscode`   | Run the VS Code Extension Host integration test |
-| `pnpm dev:ext`       | Watch the extension parser worker               |
-| `pnpm format`        | Format every maintained non-UI source and doc   |
-| `pnpm format:check`  | Verify maintained non-UI formatting             |
-| `pnpm test:watch`    | Run Vitest in watch mode                        |
-| `pnpm test:coverage` | Run tests and write local coverage reports      |
-| `pnpm test:corpus`   | Validate the pinned external Certinia sample    |
-| `pnpm audit:docs`    | Score maintained docs against the writing gate  |
-| `pnpm build`         | Build the current version without changing it   |
-| `pnpm validate`      | Run the complete required health gate           |
-| `pnpm audit:report`  | Write security findings under `audit/`          |
-| `pnpm bugs:report`   | Write static-analysis findings under `bugs/`    |
+| Command              | Purpose                                          |
+| -------------------- | ------------------------------------------------ |
+| `pnpm dev:cli`       | Watch the CLI package                            |
+| `pnpm dev:mcp`       | Watch the MCP package                            |
+| `pnpm dev:vscode`    | Watch the VS Code extension host bundle          |
+| `pnpm test:vscode`   | Build dependencies and run the VS Code host test |
+| `pnpm dev:ext`       | Watch the extension parser worker                |
+| `pnpm format`        | Format every maintained non-UI source and doc    |
+| `pnpm format:check`  | Verify maintained non-UI formatting              |
+| `pnpm test:watch`    | Run Vitest in watch mode                         |
+| `pnpm test:coverage` | Run tests and write local coverage reports       |
+| `pnpm test:corpus`   | Validate the pinned external Certinia sample     |
+| `pnpm audit:docs`    | Score maintained docs against the writing gate   |
+| `pnpm build`         | Build the current version without changing it    |
+| `pnpm validate`      | Run the complete required health gate            |
+| `pnpm audit:report`  | Write security findings under `audit/`           |
+| `pnpm bugs:report`   | Write static-analysis findings under `bugs/`     |
 
 `knip.json` declares runtime and integration-test entry points and excludes generated bundles, downloaded test harnesses, and tool-owned worktrees. Root scripts, tests, and viewer entry points belong to the `"."` workspace because Knip does not apply top-level entry patterns when explicit workspaces are configured. Update the applicable workspace when adding an entry point or generated runtime companion so `pnpm bugs:report` does not classify shipped files as unused or unresolved.
 

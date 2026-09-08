@@ -97,6 +97,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "prebuild": "pnpm --filter @apex-log-insights/core build",
     "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.cjs && esbuild src/parser-worker.ts --bundle --platform=node --format=cjs --outfile=dist/parser-worker.cjs && node scripts/assemble-webview.mjs",
     "dev": "esbuild src/extension.ts src/parser-worker.ts --bundle --platform=node --format=cjs --external:vscode --outdir=dist --out-extension:.js=.cjs --sourcemap --watch",
     "typecheck": "tsc --noEmit",

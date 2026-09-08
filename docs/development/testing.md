@@ -141,8 +141,9 @@ Do not commit `coverage/`; it is an ignored local diagnostic artifact.
 
 ## Check the VS Code release
 
-`pnpm test:vscode` builds the package and launches the official Extension Host
-harness. CI tests VS Code 1.96.0 and the current stable release. Set
+`pnpm test:vscode` builds the shared core dependency and the VS Code package,
+then launches the official Extension Host harness. CI tests VS Code 1.96.0 and
+the current stable release. Set
 `VSCODE_EXECUTABLE_PATH` locally to reuse an installed VS Code executable.
 
 Before publishing, package the VSIX, install it in an isolated profile, and run
