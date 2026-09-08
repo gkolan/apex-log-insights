@@ -8,10 +8,11 @@ import type {
   RecordFieldValue,
   RecordInfo,
   RecordGraphEntry,
-} from './types.js';
-import { SALESFORCE_ID_RE } from './types.js';
-import { isRecord, asString } from './utils.js';
-import { getKeyPrefix, resolveSObjectType } from './parsing-prefix.js';
+} from "./types.js";
+import { splitLogFields } from "../logFields.js";
+import { isSalesforceId } from "./types.js";
+import { isRecord, asString } from "./utils.js";
+import { getKeyPrefix, resolveSObjectType } from "./parsing-prefix.js";
 
 // ─── Record Graph Extraction ─────────────────────────────────────────────────
 //
@@ -23,7 +24,11 @@ export interface RecordGraphResult {
   meta: {
     totalSObjectTypes: number;
     totalRecords: number;
-    truncatedTypes: Array<{ sObjectType: string; total: number; shown: number }>;
+    truncatedTypes: Array<{
+      sObjectType: string;
+      total: number;
+      shown: number;
+    }>;
     limitPerType: number;
   };
 }
@@ -54,15 +59,22 @@ export function extractRecordGraph(
   // first occurrence.
   const vaEventQueues = new Map<string, FlatEvent[]>();
   for (const event of allEvents) {
-    if (event.type !== 'VARIABLE_ASSIGNMENT') continue;
-    const sep = event.text.indexOf('|');
-    const name = sep !== -1 ? event.text.slice(0, sep) : event.text;
+    if (event.type !== "VARIABLE_ASSIGNMENT") continue;
+    const rawParts = splitLogFields(event.logLine, 5);
+    const sep = event.text.indexOf("|");
+    const name = (
+      rawParts[1] === "VARIABLE_ASSIGNMENT"
+        ? rawParts[3] || ""
+        : sep !== -1
+          ? event.text.slice(0, sep)
+          : event.text
+    ).trim();
     if (!vaEventQueues.has(name)) vaEventQueues.set(name, []);
     vaEventQueues.get(name)!.push(event);
   }
 
   for (const va of variableAssignments) {
-    if (!va.parsedValue || typeof va.parsedValue !== 'object') continue;
+    if (!va.parsedValue || typeof va.parsedValue !== "object") continue;
 
     const queue = vaEventQueues.get(va.variableName) ?? [];
     const eventForVa = queue.shift();
@@ -72,26 +84,31 @@ export function extractRecordGraph(
     if (Array.isArray(va.parsedValue)) {
       // List of IDs or list of records
       for (const item of va.parsedValue) {
-        if (typeof item === 'string' && item.length >= 15) {
-          if (SALESFORCE_ID_RE.test(item)) {
-            if (!recordsById.has(item)) {
-              recordsById.set(item, {
-                id: item,
-                sObjectType: resolveSObjectType(item, prefixMap),
-                keyPrefix: getKeyPrefix(item),
-                fields: [],
-                relationships: [],
-                provenance: {
-                  variableName: va.variableName,
-                  timestampNs,
-                  lineNumber,
-                  source: 'variable_assignment',
-                },
-              });
-            }
+        if (isSalesforceId(item)) {
+          if (!recordsById.has(item)) {
+            recordsById.set(item, {
+              id: item,
+              sObjectType: resolveSObjectType(item, prefixMap),
+              keyPrefix: getKeyPrefix(item),
+              fields: [],
+              relationships: [],
+              provenance: {
+                variableName: va.variableName,
+                timestampNs,
+                lineNumber,
+                source: "variable_assignment",
+              },
+            });
           }
         } else if (isRecord(item)) {
-          extractRecordFromObject(item as UnknownRecord, va.variableName, timestampNs, lineNumber, prefixMap, recordsById);
+          extractRecordFromObject(
+            item as UnknownRecord,
+            va.variableName,
+            timestampNs,
+            lineNumber,
+            prefixMap,
+            recordsById,
+          );
         }
       }
     } else if (isRecord(va.parsedValue)) {
@@ -99,19 +116,33 @@ export function extractRecordGraph(
 
       // Check if this is a direct record (has 'Id' field)
       const directId = asString(obj.Id);
-      if (directId && directId.length >= 15) {
-        extractRecordFromObject(obj, va.variableName, timestampNs, lineNumber, prefixMap, recordsById);
+      if (isSalesforceId(directId)) {
+        extractRecordFromObject(
+          obj,
+          va.variableName,
+          timestampNs,
+          lineNumber,
+          prefixMap,
+          recordsById,
+        );
       } else {
         // Map keyed by ID: { "aQMbc...": { ... }, "aQMbc...": { ... } }
         for (const [key, val] of Object.entries(obj)) {
-          if (typeof key === 'string' && key.length >= 15) {
-            if (SALESFORCE_ID_RE.test(key) && isRecord(val)) {
+          if (isSalesforceId(key)) {
+            if (isRecord(val)) {
               // Inject the map key as Id when the value object lacks its own Id field
               const valRecord = val as UnknownRecord;
-              const recordObj: UnknownRecord = asString(valRecord.Id)
+              const recordObj: UnknownRecord = isSalesforceId(valRecord.Id)
                 ? valRecord
-                : { Id: key, ...valRecord };
-              extractRecordFromObject(recordObj, va.variableName, timestampNs, lineNumber, prefixMap, recordsById);
+                : { ...valRecord, Id: key };
+              extractRecordFromObject(
+                recordObj,
+                va.variableName,
+                timestampNs,
+                lineNumber,
+                prefixMap,
+                recordsById,
+              );
             }
           }
         }
@@ -127,7 +158,11 @@ export function extractRecordGraph(
     bySObject.get(key)!.push(record);
   }
 
-  const truncatedTypes: Array<{ sObjectType: string; total: number; shown: number }> = [];
+  const truncatedTypes: Array<{
+    sObjectType: string;
+    total: number;
+    shown: number;
+  }> = [];
   let totalRecords = 0;
 
   const entries = Array.from(bySObject.entries())
@@ -135,11 +170,15 @@ export function extractRecordGraph(
       totalRecords += records.length;
       const shown = records.slice(0, limitPerType);
       if (records.length > limitPerType) {
-        truncatedTypes.push({ sObjectType, total: records.length, shown: shown.length });
+        truncatedTypes.push({
+          sObjectType,
+          total: records.length,
+          shown: shown.length,
+        });
       }
       return {
         sObjectType,
-        keyPrefix: records[0]?.keyPrefix ?? '???',
+        keyPrefix: records[0]?.keyPrefix ?? "???",
         recordCount: records.length,
         records: shown,
         truncated: records.length > limitPerType,
@@ -165,48 +204,60 @@ function extractRecordFromObject(
   lineNumber: number | null,
   prefixMap: Map<string, string>,
   recordsById: Map<string, RecordInfo>,
-  visited: Set<unknown> = new Set(),
 ): void {
-  if (visited.has(obj)) return;
-  visited.add(obj);
-  const id = asString(obj.Id);
-  if (!id || id.length < 15) return;
+  const stack: Array<{ record: UnknownRecord; provenanceName: string }> = [
+    { record: obj, provenanceName: variableName },
+  ];
+  const visited = new WeakSet<object>();
 
-  // Skip if already tracked with richer data
-  const existing = recordsById.get(id);
-  if (existing && existing.fields.length > 0) return;
+  while (stack.length > 0) {
+    const frame = stack.pop()!;
+    if (visited.has(frame.record)) continue;
+    visited.add(frame.record);
 
-  const fields: RecordFieldValue[] = [];
-  const relationships: RecordInfo['relationships'] = [];
+    const id = asString(frame.record.Id);
+    if (!isSalesforceId(id)) continue;
 
-  for (const [field, value] of Object.entries(obj)) {
-    if (field === 'Id') continue;
+    // Skip if already tracked with richer data.
+    const existing = recordsById.get(id);
+    if (existing && existing.fields.length > 0) continue;
 
-    // Relationship navigation (__r suffix)
-    if (field.endsWith('__r') && isRecord(value)) {
-      const relObj = value as UnknownRecord;
-      const relId = asString(relObj.Id);
-      if (relId) {
-        relationships.push({
-          field,
-          relatedId: relId,
-          relatedSObject: resolveSObjectType(relId, prefixMap),
-        });
-        // Recurse into the related record
-        extractRecordFromObject(relObj, `${variableName}.${field}`, timestampNs, lineNumber, prefixMap, recordsById, visited);
-      }
-      // Also extract scalar fields from the related object
-      for (const [relField, relValue] of Object.entries(relObj)) {
-        if (relField !== 'Id' && !relField.endsWith('__r') && !isRecord(relValue)) {
-          fields.push({ field: `${field}.${relField}`, value: relValue });
+    const fields: RecordFieldValue[] = [];
+    const relationships: RecordInfo["relationships"] = [];
+
+    for (const [field, value] of Object.entries(frame.record)) {
+      if (field === "Id") continue;
+
+      // Relationship navigation (__r suffix)
+      if (field.endsWith("__r") && isRecord(value)) {
+        const relObj = value as UnknownRecord;
+        const relId = asString(relObj.Id);
+        if (isSalesforceId(relId)) {
+          relationships.push({
+            field,
+            relatedId: relId,
+            relatedSObject: resolveSObjectType(relId, prefixMap),
+          });
+          stack.push({
+            record: relObj,
+            provenanceName: `${frame.provenanceName}.${field}`,
+          });
         }
+        // Also extract scalar fields from the related object
+        for (const [relField, relValue] of Object.entries(relObj)) {
+          if (
+            relField !== "Id" &&
+            !relField.endsWith("__r") &&
+            !isRecord(relValue)
+          ) {
+            fields.push({ field: `${field}.${relField}`, value: relValue });
+          }
+        }
+        continue;
       }
-      continue;
-    }
 
-    // Foreign key fields (__c ending with an ID value)
-    if (typeof value === 'string' && value.length >= 15) {
-      if (SALESFORCE_ID_RE.test(value)) {
+      // Foreign key fields containing an exact ID value
+      if (isSalesforceId(value)) {
         const relSObject = resolveSObjectType(value, prefixMap);
         relationships.push({
           field,
@@ -214,25 +265,25 @@ function extractRecordFromObject(
           relatedSObject: relSObject,
         });
       }
+
+      // Scalar field values
+      if (!isRecord(value) && !Array.isArray(value)) {
+        fields.push({ field, value });
+      }
     }
 
-    // Scalar field values
-    if (!isRecord(value) && !Array.isArray(value)) {
-      fields.push({ field, value });
-    }
+    recordsById.set(id, {
+      id,
+      sObjectType: resolveSObjectType(id, prefixMap),
+      keyPrefix: getKeyPrefix(id),
+      fields,
+      relationships,
+      provenance: {
+        variableName: frame.provenanceName,
+        timestampNs,
+        lineNumber,
+        source: "variable_assignment",
+      },
+    });
   }
-
-  recordsById.set(id, {
-    id,
-    sObjectType: resolveSObjectType(id, prefixMap),
-    keyPrefix: getKeyPrefix(id),
-    fields,
-    relationships,
-    provenance: {
-      variableName,
-      timestampNs,
-      lineNumber,
-      source: 'variable_assignment',
-    },
-  });
 }

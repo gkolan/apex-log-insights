@@ -20,8 +20,10 @@ export function normalizeHeapSummary(report) {
   if (!heap) return null;
   const hotspots = toArray(heap?.hotspotsByLine)
     .map((item) => ({
-      line: first(item?.rawLogLineNumber, item?.line, null),
+      line: first(item?.rawLogLineNumber, item?.lineNumber, item?.line, null),
       allocations: Number(first(item?.allocationCount, item?.count, 0) || 0),
+      totalBytes: first(item?.totalBytes, null),
+      averageBytes: first(item?.avgBytes, null),
       namespace: first(item?.namespace, null),
     }));
   return {
@@ -29,6 +31,19 @@ export function normalizeHeapSummary(report) {
     allocationCount: Number(first(heap?.allocationCount, 0) || 0),
     deallocationCount: Number(first(heap?.deallocationCount, 0) || 0),
     totalAllocatedBytes: first(heap?.totalAllocatedBytes, null),
+    totalDeallocatedBytes: first(heap?.totalDeallocatedBytes, null),
+    netAllocatedBytes: first(heap?.netAllocatedBytes, null),
+    watermarkSamples: toArray(heap?.watermarkSamples).map((sample, index) => ({
+      id: `heap-sample-${index + 1}`,
+      timestampNs: first(sample?.timestampNs, null),
+      cumulativeBytes: first(sample?.cumulativeBytes, null),
+    })),
+    byPhase: toArray(heap?.byPhase).map((phase, index) => ({
+      id: first(phase?.phaseId, `heap-phase-${index + 1}`),
+      label: first(phase?.phaseLabel, phase?.phaseId, `Phase ${index + 1}`),
+      allocatedBytes: first(phase?.allocatedBytes, null),
+      allocationCount: Number(first(phase?.allocationCount, 0) || 0),
+    })),
     hotspots,
   };
 }
@@ -89,7 +104,11 @@ export function deriveSummaryStatus(report) {
       outcome: String(first(explicitStatus?.outcome, "ok")),
       errorCount: Number(first(
         explicitStatus?.errorCount,
-        report?.errors?.count,
+        countIssuesBySeverity(
+          issueState.items,
+          "error",
+          issueState.fallbackSeverity,
+        ),
         0,
       )),
       warningCount: Number(first(
@@ -101,7 +120,6 @@ export function deriveSummaryStatus(report) {
   }
 
   const errorCount = Math.max(
-    Number(report?.errors?.count || 0),
     countIssuesBySeverity(issueState.items, "error", issueState.fallbackSeverity),
   );
   const warningCount = countIssuesBySeverity(issueState.items, "warn", issueState.fallbackSeverity);
@@ -136,7 +154,7 @@ export function normalizeTopMetrics(report, rawLines) {
     dmlCount: first(metrics?.dml?.statements, toArray(report?.database?.dml).length, 0),
     soqlRows: first(metrics?.soql?.rows, 0),
     dmlRows: first(metrics?.dml?.rows, 0),
-    queueables: first(metrics?.queueablesEnqueued, 0),
+    queueables: first(metrics?.queueablesEnqueued?.count, 0),
     futures: first(metrics?.futureCalls?.count, 0),
     lines: rawLines.length || null,
   };
@@ -281,7 +299,9 @@ export function normalizeDiagnostics(report, rawLineMap) {
 
   return {
     issues: trustedIssues,
-    issueCountTotal: trustedIssues.length,
+    issueCountTotal: issueState.totalCount,
+    issuesTruncated: issueState.truncated,
+    issueLimit: issueState.limit,
     structuralWarnings: normalizeStructuralWarnings(report, rawLineMap),
     executionContext: normalizeExecutionContext(report),
     debugQuality: report?.debugLevelQuality || null,

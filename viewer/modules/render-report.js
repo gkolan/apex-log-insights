@@ -1,4 +1,8 @@
-import { evidenceButton } from "./shared-evidence.js";
+import {
+  evidenceButton,
+  logLineCell,
+  sourceLineCell,
+} from "./shared-evidence.js";
 import { escapeHtml, formatList, formatMs, num } from "./shared-format.js";
 
 function issueRows(items, emptyText) {
@@ -10,16 +14,20 @@ function issueRows(items, emptyText) {
     <div class="tableWrap">
       <table class="issueTable">
         <thead>
-          <tr><th>Name</th><th>Type</th><th>Line #</th></tr>
+          <tr><th>Name</th><th>Type</th><th>Log line</th></tr>
         </thead>
         <tbody>
-          ${items.map((item) => `
+          ${items
+            .map(
+              (item) => `
             <tr>
               <td>${escapeHtml(item.summary)}</td>
               <td>${escapeHtml(item.type || item.severity || "Issue")}</td>
-              <td>${evidenceButton(item, "Open") || "-"}</td>
+              <td>${logLineCell(item)}</td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -32,13 +40,17 @@ function limitsMarkup(limits) {
 
   return `
     <div class="grid2">
-      ${rows.map(([name, value]) => `
+      ${rows
+        .map(
+          ([name, value]) => `
         <div class="detailCard">
           <strong>${escapeHtml(name)}</strong>
           <p class="smallCopy">Used ${num(value?.used)} of ${num(value?.max)}</p>
           <div class="inlineMeta">${escapeHtml(value?.status || "-")}</div>
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -49,17 +61,22 @@ function soqlTable(items) {
     <div class="tableWrap">
       <table>
         <thead>
-          <tr><th>Name</th><th>Rows</th><th>Duration</th><th>Line #</th></tr>
+          <tr><th>Name</th><th>Rows</th><th>Duration</th><th>Source line</th><th>Log line</th></tr>
         </thead>
         <tbody>
-          ${items.map((item) => `
+          ${items
+            .map(
+              (item) => `
             <tr>
               <td>${escapeHtml(item.label)}</td>
               <td>${num(item.rows)}</td>
               <td>${escapeHtml(formatMs(item.durationMs))}</td>
-              <td>${evidenceButton(item, "Open") || "-"}</td>
+              <td>${sourceLineCell(item)}</td>
+              <td>${logLineCell(item)}</td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -75,14 +92,18 @@ function dmlTable(items) {
           <tr><th>Operation</th><th>Object</th><th>Rows</th><th>Duration</th></tr>
         </thead>
         <tbody>
-          ${items.map((item) => `
+          ${items
+            .map(
+              (item) => `
             <tr>
               <td>${escapeHtml(item.operation)}</td>
               <td>${escapeHtml(item.sObject)}</td>
               <td>${num(item.rows)}</td>
               <td>${escapeHtml(formatMs(item.durationMs))}</td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -93,12 +114,14 @@ export function renderReport(report) {
   const issues = report.diagnostics.issues;
   const errors = issues.filter((item) => item.severity === "error");
   const warnings = issues.filter((item) => item.severity !== "error");
-  const parserWarnings = report.diagnostics.parserWarnings.map((item, index) => ({
-    id: `parser-warning-${index + 1}`,
-    summary: item.text,
-    type: item.phase || "Parser Warning",
-    evidence: {},
-  }));
+  const parserWarnings = report.diagnostics.parserWarnings.map(
+    (item, index) => ({
+      id: `parser-warning-${index + 1}`,
+      summary: item.text,
+      type: item.phase || "Parser Warning",
+      evidence: {},
+    }),
+  );
 
   return `
     <section class="viewPanel">
@@ -132,9 +155,12 @@ export function renderReport(report) {
             </div>
           </div>
           <div class="stack" style="margin-top:16px;">
-            ${report.summary.highlights.length === 0
-              ? '<p>No highlights.</p>'
-              : report.summary.highlights.map((item) => `
+            ${
+              report.summary.highlights.length === 0
+                ? "<p>No highlights.</p>"
+                : report.summary.highlights
+                    .map(
+                      (item) => `
                 <article class="detailCard">
                   <strong>${escapeHtml(item.title)}</strong>
                   <p class="smallCopy">${escapeHtml(item.summary)}</p>
@@ -143,7 +169,10 @@ export function renderReport(report) {
                     ${evidenceButton(item, "Jump to line")}
                   </div>
                 </article>
-              `).join("")}
+              `,
+                    )
+                    .join("")
+            }
           </div>
         </div>
       </section>
@@ -151,7 +180,7 @@ export function renderReport(report) {
       <section class="panel" id="resourceUsagePanel">
         <div class="rawLogHeader">
           <div>
-            <h2>Resource Usage</h2>
+            <h2>Resource Use</h2>
             <p class="subheading">Limit consumption and package breakdown</p>
           </div>
         </div>
@@ -160,9 +189,16 @@ export function renderReport(report) {
           <div class="grid2" style="margin-top:16px;">
             <div class="detailCard">
               <strong>Savepoints</strong>
-              ${report.data.savepoints.length === 0
-                ? '<p class="smallCopy">No savepoints or rollback markers were detected.</p>'
-                : report.data.savepoints.map((item, index) => `<div class="smallCopy">${escapeHtml(item?.label || item?.name || `Savepoint ${index + 1}`)}</div>`).join("")}
+              ${
+                report.data.savepoints.length === 0
+                  ? '<p class="smallCopy">No savepoints or rollback markers were detected.</p>'
+                  : report.data.savepoints
+                      .map(
+                        (item, index) =>
+                          `<div class="smallCopy">${escapeHtml(item?.label || item?.name || `Savepoint ${index + 1}`)}</div>`,
+                      )
+                      .join("")
+              }
             </div>
             <div class="detailCard">
               <strong>Instrumentation</strong>
@@ -187,7 +223,7 @@ export function renderReport(report) {
         </div>
       </section>
 
-      <section class="panel" id="warningsPanel" ${(warnings.length === 0 && parserWarnings.length === 0) ? "hidden" : ""}>
+      <section class="panel" id="warningsPanel" ${warnings.length === 0 && parserWarnings.length === 0 ? "hidden" : ""}>
         <div class="rawLogHeader">
           <div>
             <h2>Warnings</h2>
@@ -203,10 +239,10 @@ export function renderReport(report) {
       <section class="panel" id="dmlPanel">
         <div class="rawLogHeader">
           <div>
-            <h2>DML Rows</h2>
-            <p class="subheading">Total records inserted, updated, deleted, or upserted</p>
+            <h2>DML Operations</h2>
+            <p class="subheading">Each operation shows the number of affected records</p>
           </div>
-          <span class="pillBtn">${num(report.data.dml.length)} total</span>
+          <span class="pillBtn">${num(report.data.dml.length)} operations</span>
         </div>
         <div class="sectionBody">
           ${dmlTable(report.data.dml)}

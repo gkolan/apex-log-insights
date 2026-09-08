@@ -1,6 +1,6 @@
-# Edge Manifest
+# Edge manifest
 
-This `manifest.json` is the Manifest V3 configuration for the Edge Add-ons store.
+Use this page when changing or loading the Edge manifest. The goal is to preserve Edge-specific metadata while sharing runtime behavior with the Chrome build.
 
 ## Key differences from other browsers
 

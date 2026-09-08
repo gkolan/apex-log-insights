@@ -6,11 +6,7 @@
  */
 
 // Parser — vendor Certinia engine (public API)
-export {
-  ApexLogParser,
-  DebugLevel,
-  parse,
-} from './certinia/index.js';
+export { ApexLogParser, DebugLevel, parse } from "./certinia/index.js";
 
 export type {
   CPUType,
@@ -26,7 +22,7 @@ export type {
   LogLineConstructor,
   LogSubCategory,
   SelfTotal,
-} from './certinia/index.js';
+} from "./certinia/index.js";
 
 export {
   ApexLog,
@@ -40,38 +36,46 @@ export {
   parseObjectNamespace,
   parseRows,
   parseVfNamespace,
-} from './certinia/index.js';
+} from "./certinia/index.js";
 
-export { getLogEventClass, lineTypeMap } from './certinia/index.js';
+export { getLogEventClass, lineTypeMap } from "./certinia/index.js";
 
 // Parser Core — high-level parse entry point
-export {
-  parseLog,
-} from './parserCore.js';
+export { parseLog } from "./parserCore.js";
 
 export type {
   ParseLogOptions,
   ParseSourceType,
   NormalizedParseResult,
+  NormalizedParsingDiagnostic,
   NormalizedTimelineEvent,
   RawLogLine,
-} from './parserCore.js';
+} from "./parserCore.js";
 
 // Reports
-export { buildInsightsReport } from './insightsReport.js';
-export { buildOfflineReport } from './offlineReport.js';
-export type { OfflineReportInput, ReportLimits } from './offlineReport.js';
-export type { JsonValue, JsonPrimitive } from './report.js';
+export { buildInsightsReport } from "./insightsReport.js";
+export { buildOfflineReport } from "./offlineReport.js";
+export type {
+  OfflineReportInput,
+  OfflineReportV2,
+  ReportLimits,
+} from "./offlineReport.js";
+export type { JsonValue, JsonPrimitive } from "./report.js";
 
 // Phases
-export {
-  EXECUTION_PHASE_DEFINITIONS,
-} from './phases.js';
+export { EXECUTION_PHASE_DEFINITIONS } from "./phases.js";
 
-export type {
-  ExecutionPhaseId,
-  EvidenceConfidence,
-} from './phases.js';
+export type { ExecutionPhaseId, EvidenceConfidence } from "./phases.js";
 
 // Insights — execution context detection
-export { VALID_CONTEXT_VALUES } from './insights/execution.js';
+export { VALID_CONTEXT_VALUES } from "./insights/execution.js";
+
+// Shared input ceiling and allocation-free sizing for every host boundary.
+export { MAX_LOG_BYTES, utf8ByteLength } from "./utf8.js";
+
+// Host-neutral parser-worker protocol shared by packaged adapters.
+export { processWorkerParseMessage } from "./workerProtocol.js";
+export type {
+  WorkerParseOptions,
+  WorkerParseResponse,
+} from "./workerProtocol.js";

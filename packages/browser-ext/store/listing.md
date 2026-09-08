@@ -1,124 +1,91 @@
-# Chrome Web Store Listing — Apex Log Insights
+# Browser store listing
 
----
+Use this page when creating or updating the Chrome, Edge, or Firefox listing for Apex Log Insights. The long description is browser-neutral. Adapt store-specific fields and permission explanations to the submitted manifest, and verify the [privacy policy](privacy-policy.md) before submission.
 
-## Extension Name
+## Extension name
 
-**Apex Log Insights**
+Apex Log Insights
 
----
+## Short description
 
-## Short Description
+The store permits up to 132 characters.
 
-*(132 character limit — used in search results and extension tiles)*
+> Analyze Apex debug logs locally with execution, SOQL, DML, governor-limit, diagnostic, and raw-line views.
 
+## Category and language
+
+- Category: Developer Tools
+- Language: English
+- Pricing: Free
+
+## Single-purpose statement
+
+> Analyzes Salesforce Apex debug logs locally in the browser and presents the results as linked, searchable views.
+
+## Long description
+
+The store field accepts plain text. Do not paste Markdown formatting.
+
+```text
+Apex Log Insights analyzes Salesforce Apex debug logs locally in your browser. Open a .log file to inspect the transaction through five linked views. Log parsing runs in a Web Worker inside the extension. Browser users do not need Node.js or pnpm.
+
+TRIAGE SUMMARY
+See the transaction status, errors, warnings, governor-limit use, and findings that need attention first.
+
+EXECUTION STORY
+Follow execution blocks and lifecycle phases in order. Phase entries distinguish direct evidence from derived or inferred results.
+
+DATA & LIMITS
+Review SOQL queries, DML operations, callouts, Named Credentials, savepoints, query patterns, and governor-limit use.
+
+DIAGNOSTICS
+Check execution context, instrumentation quality, trigger cascades, recursion, mixed DML, managed-package activity, and parser warnings.
+
+LOG EXPLORER
+Search the full raw log and follow evidence links from a supported finding to its exact raw-log line.
+
+PRIVACY
+Parsing does not send log content to the developer or a third-party service. The extension stores preferences and keeps no more than the five most recently opened log payloads in browser extension storage so analyzer tabs can survive a refresh. Opening more logs removes the oldest cached payloads. Select Clear cached logs in the extension popup to remove cached log payloads while keeping preferences. Clear all extension data or uninstall the extension to remove all retained extension data.
+
+REDACTION
+Before copying raw lines, you can mask recognized email addresses, Salesforce IDs, phone numbers, and names that you provide. Redaction is pattern-based and may not find every sensitive value. Review copied text before sharing it.
+
+FILE NAVIGATION
+Chrome and Edge users can enable a file sidebar that lists sibling .log files from a local directory page. This feature briefly reads that directory listing after the user enables it. Firefox does not provide this sidebar.
+
+SUPPORTED INPUT
+Use a Salesforce Apex debug-log file or a compatible Apex Log Insights report. Report accuracy depends on the events and debug levels present in the source log.
+
+OTHER INSTALLATION OPTIONS
+Browser extensions are available for Chrome, Microsoft Edge, and Firefox. The project also includes a VS Code release candidate, a command-line tool, a Node.js/TypeScript library, and an MCP server available from source. Current installation options and store links: https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/getting-started.md#availability
+
+The optional MCP server parses locally and passes results to your AI client, which may send them to a cloud model. Redaction is best-effort masking, not a guarantee of anonymity.
+
+FEEDBACK AND SUPPORT
+Send questions, suggestions, or bug reports to feedback@apexloginsights.com. Include your browser and extension version and steps to reproduce the problem. Apex Log Insights is open source. Attach only a small synthetic or sanitized log; do not send an unreviewed production log.
 ```
-Free offline toolkit for Apex debug logs — execution timeline, governor limits, SOQL analysis, and guided triage.
-```
 
-*(113 chars)*
+## Permission justifications
 
----
+### `tabs`
 
-## Category
+Detects a tab whose URL points to a `.log` file, opens the analyzer, and supports local-file navigation initiated by the user.
 
-**Developer Tools**
+### `storage`
 
----
+Stores theme, redaction, Log Explorer, and sidebar preferences. It may also store the active log or report, source URL, and sibling-file state so the analyzer can restore its current state after refresh. Storage remains in the local browser profile and is not sent to the developer.
 
-## Language
+### `scripting`
 
-English
+Chrome and Edge only. Reads links from a local directory-listing tab only when the user enables sibling-log discovery. The extension uses those links to populate the file sidebar. Firefox does not request this permission because it does not provide the sidebar.
 
----
+### Host access: `*://*/*.log` and `file:///*`
 
-## Long Description
+Lets the content script recognize web and local `.log` URLs and transfer the selected log to the local analyzer. Parsing occurs inside the extension.
 
-*(Up to 16,000 characters. Shown on the store detail page. Plain text only — no Markdown, no HTML.)*
+## Search terms
 
----
-
-Apex Log Insights is a free, offline toolkit that turns raw Apex debug logs into actionable insights. Drop in a .log file, get instant structured analysis across five views — no servers, no uploads, no accounts.
-
-Every parse runs locally in a Web Worker. Your log data never leaves your machine.
-
----
-
-FIVE STRUCTURED VIEWS
-
-Triage
-Get an immediate verdict — OK, Warning, or Critical — based on governor limit consumption, error count, and query patterns. See the key metrics at a glance and catch N+1 SOQL loops before you dig deeper.
-
-Execution
-Salesforce executes Apex in a 20-phase lifecycle (trigger start, validation, DML, commit, etc.). Apex Log Insights maps every event to its phase so you can see exactly which phase consumed which governor limits. Each event links back to its exact line in the raw log.
-
-Data & Limits
-All SOQL queries ranked by duration. DML operations by sObject type. HTTP callouts with status codes and response metadata. Named Credential request/response pairs. Savepoints and rollbacks. Governor limit usage at a glance.
-
-Diagnostics
-Execution context detection (synchronous trigger, queueable, future method, batch, scheduled, anonymous Apex, platform event). Debug level completeness score. Trigger cascade analysis. Managed package overhead calculation. Mixed DML and recursive trigger warnings.
-
-Log Explorer
-The complete raw log with full-text and regex search, context line controls, user-debug-only and errors-only filters, and one-click copy. Every item in every other view links directly to its exact line number here. Nothing is truncated.
-
----
-
-KEY FEATURES
-
-Evidence Linking — click any SOQL query, DML operation, callout, or warning to jump instantly to the matching line in the raw log. No manual searching.
-
-N+1 SOQL Detection — automatically flags queries executed inside loops, the most common cause of governor limit exceptions in Apex.
-
-Governor Limit Burn Rate — shows which execution phase consumed CPU, heap, and query limits so you can pinpoint the bottleneck.
-
-Mixed DML Detection — warns when setup objects (User, PermissionSet, etc.) and non-setup objects are modified in the same transaction, a common cause of hard-to-debug runtime errors.
-
-Recursive Trigger Detection — flags when the same trigger fires multiple times in a single transaction.
-
-Debug Level Quality Scoring — tells you if your log was captured at too low a level and is missing key event types that would affect analysis accuracy.
-
-PHI/PII Redaction — before copying log content, optionally mask email addresses, Salesforce IDs, phone numbers, and custom person names so sensitive data stays out of bug reports and tickets.
-
-Auto-Detection — browse to any .log URL in Chrome (including Salesforce's own debug log download links) and the extension intercepts and analyzes it automatically.
-
----
-
-COMPLETELY OFFLINE
-
-No server. No account. No API calls. No telemetry. The extension requires only two permissions: "tabs" (to detect when you open a .log file) and "storage" (to remember your preferences). Host permissions are scoped to *.log URLs and local files only.
-
----
-
-HOW TO GET AN APEX DEBUG LOG
-
-In Salesforce: Setup → Debug Logs → add a Trace Flag for your user → reproduce the operation → download the log file.
-
-For best results, use these debug levels:
-Apex Code: FINEST
-Apex Profiling: FINE
-Database: FINEST
-Callout: FINE
-System: FINE
-Validation: FINE
-Workflow: FINE
-
----
-
-WHO IS IT FOR
-
-Salesforce developers and release engineers who need to understand what a transaction actually did — how many queries ran, which governor limits were hit, what the trigger lifecycle looked like, and exactly which line of code caused a problem. Works on any Apex debug log regardless of org edition.
-
----
-
-OPEN SOURCE
-
-Apex Log Insights is open source. Contributions, bug reports, and feature requests are welcome.
-
----
-
-## Tags / Keywords
-
-*(Use in the "Keywords" field if the store provides one. Otherwise weave into the description.)*
+Use these only where the store provides a search-term field:
 
 - Salesforce
 - Apex
@@ -126,39 +93,35 @@ Apex Log Insights is open source. Contributions, bug reports, and feature reques
 - governor limits
 - SOQL
 - DML
-- log analyzer
-- developer tools
-- Salesforce developer
-- performance
-- N+1
+- log analysis
 - trigger
 - Apex profiling
 
----
+## Firefox reviewer notes
 
-## Permissions Justification
+Attach `firefox-source-v1.2.0.zip` as the source-code submission. Its included `FIREFOX-SOURCE-README.md` lists the locked environment and exact reproduction commands. Use the following functional-testing notes in the Firefox Add-ons submission:
 
-*(Required during submission — answers the "Why does this extension need X?" prompts)*
+```text
+Build environment: Node.js 24 and pnpm 10.27.0. The attached source archive includes pnpm-lock.yaml and complete build instructions. Build the core package before the Firefox package as documented in FIREFOX-SOURCE-README.md. The generated XPI should contain the same 27 file contents as the submitted extension; ZIP timestamps and entry order may differ.
 
-**tabs**
-Used to detect when the user navigates to a `.log` URL so the content script can offer to open the analyzer. No tab content is read.
+Functional test:
+1. Install the extension in Firefox.
+2. Open the toolbar popup and select Open analyzer.
+3. Choose or drop a Salesforce Apex debug log whose file name ends in .log. A synthetic sample is available in the repository fixtures directory.
+4. Confirm Triage Summary appears, navigate through the five report views, and follow a Log line link to Log Explorer.
+5. Refresh the analyzer tab and confirm the current report is restored.
 
-**storage**
-Used to persist user preferences (context line defaults, redaction settings, last-loaded report path) between browser sessions. No log data is stored — only UI preferences.
+No account or Salesforce credentials are required. Parsing is local and the extension does not transmit log content. Firefox intentionally omits the Chrome/Edge sibling-file sidebar and does not request the scripting permission.
 
-**Host permission: `*://*/*.log` and `file:///`**
-Required for the content script to run on `.log` URLs (including local files) and for the extension to read log file contents for local parsing. All processing is done locally; no data is transmitted.
+Mozilla web-ext lint reports no errors. Its four UNSAFE_VAR_ASSIGNMENT warnings are known and reviewed: three assign fixed packaged SVG icon constants to copy buttons; the other renders file-list markup after every source-derived value is passed through escapeHtml. No remote value is inserted as executable code.
+```
 
----
+## Submission checks
 
-## Pricing
+Before copying this listing:
 
-Free
-
----
-
-## Single Purpose Description
-
-*(Chrome Web Store asks for a one-sentence "single purpose" statement)*
-
-Analyzes Salesforce Apex debug log files locally in the browser and presents the results as structured, navigable views.
+1. Compare permissions with all three source manifests.
+2. Verify storage statements against extension code and the privacy policy.
+3. Confirm every named view and feature exists in the submitted build.
+4. Recount the short description if it changes.
+5. Remove claims that cannot be reproduced with a tracked synthetic fixture.

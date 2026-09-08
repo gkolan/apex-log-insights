@@ -67,6 +67,7 @@ mkdir -p "$OUT_DIR"
 
 cp -r "$PKG_DIR/shared/"* "$OUT_DIR/"
 cp "$PKG_DIR/manifests/edge/manifest.json" "$OUT_DIR/manifest.json"
+cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$OUT_DIR/THIRD-PARTY-NOTICES.md"
 cp "$DIST_DIR/content/apex-parser-worker.js" "$OUT_DIR/content/" 2>/dev/null || true
 
 ZIP_NAME="edge-extension-v${VERSION}.zip"

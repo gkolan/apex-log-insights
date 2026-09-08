@@ -25,6 +25,7 @@ let sidebarOverlay = null;
 let currentFiles = [];
 let activeFileName = "";
 let onFileClick = null; // callback: (fileName, fileEntry) => void
+let sidebarReturnFocus = null;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -59,18 +60,20 @@ function renderFileList() {
       const parts = f.name.split("/");
       const displayName = parts.length > 1 ? parts[parts.length - 1] : f.name;
       const folderPrefix = parts.length > 1 ? parts.slice(0, -1).join("/") + "/" : "";
-      return `<li class="file-sidebar-item${isActive ? " active" : ""}" data-filename="${escapeHtml(f.name)}" role="button" tabindex="0">
+      return `<li><button type="button" class="file-sidebar-item${isActive ? " active" : ""}" data-filename="${escapeHtml(f.name)}"${isActive ? ' aria-current="page"' : ""}>
         ${folderPrefix ? `<span class="file-sidebar-path">${escapeHtml(folderPrefix)}</span>` : ""}
         <span class="file-sidebar-name">${escapeHtml(displayName)}</span>
         ${dateStr ? `<span class="file-sidebar-date">${escapeHtml(dateStr)}</span>` : ""}
-      </li>`;
+      </button></li>`;
     })
     .join("");
 }
 
 function showSidebar() {
   if (!sidebarEl) return;
+  sidebarReturnFocus = document.activeElement;
   sidebarEl.hidden = false;
+  sidebarEl.inert = false;
   sidebarEl.classList.add("open");
   if (sidebarOverlay) sidebarOverlay.hidden = false;
   if (sidebarToggleBtn) {
@@ -79,11 +82,14 @@ function showSidebar() {
     const label = sidebarToggleBtn.querySelector("span");
     if (label) label.hidden = true;
   }
+  sidebarCloseBtn?.focus();
 }
 
 function hideSidebar() {
   if (!sidebarEl) return;
   sidebarEl.classList.remove("open");
+  sidebarEl.inert = true;
+  sidebarEl.hidden = true;
   if (sidebarOverlay) sidebarOverlay.hidden = true;
   if (sidebarToggleBtn) {
     sidebarToggleBtn.setAttribute("aria-expanded", "false");
@@ -91,6 +97,8 @@ function hideSidebar() {
     const label = sidebarToggleBtn.querySelector("span");
     if (label) label.hidden = false;
   }
+  if (sidebarReturnFocus instanceof HTMLElement) sidebarReturnFocus.focus();
+  sidebarReturnFocus = null;
 }
 
 function toggleSidebar() {
@@ -115,7 +123,17 @@ export function populateSidebar(files, currentFileName) {
   activeFileName = currentFileName || "";
 
   // Only show sidebar when there are sibling files (more than just the current one)
-  if (currentFiles.length <= 1) return;
+  if (currentFiles.length <= 1) {
+    if (sidebarEl) {
+      sidebarEl.classList.remove("open");
+      sidebarEl.hidden = true;
+      sidebarEl.inert = true;
+    }
+    if (sidebarToggleBtn) sidebarToggleBtn.hidden = true;
+    if (sidebarOverlay) sidebarOverlay.hidden = true;
+    renderFileList();
+    return;
+  }
 
   if (sidebarFolderName) {
     sidebarFolderName.textContent = `${currentFiles.length} log file${currentFiles.length !== 1 ? "s" : ""}`;
@@ -136,7 +154,10 @@ export function setActiveSidebarFile(fileName) {
   activeFileName = fileName || "";
   if (!sidebarFileList) return;
   sidebarFileList.querySelectorAll(".file-sidebar-item").forEach((li) => {
-    li.classList.toggle("active", li.dataset.filename === activeFileName);
+    const active = li.dataset.filename === activeFileName;
+    li.classList.toggle("active", active);
+    if (active) li.setAttribute("aria-current", "page");
+    else li.removeAttribute("aria-current");
   });
 }
 
@@ -152,6 +173,7 @@ export function initSidebar(options = {}) {
   sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
   sidebarRefreshBtn = document.getElementById("sidebarRefreshBtn");
   sidebarOverlay = document.getElementById("sidebarOverlay");
+  if (sidebarEl) sidebarEl.inert = true;
 
   onFileClick = options.onFileClick || null;
 
@@ -175,6 +197,31 @@ export function initSidebar(options = {}) {
     sidebarOverlay.addEventListener("click", hideSidebar);
   }
 
+  document.addEventListener("keydown", (event) => {
+    if (!sidebarEl?.classList.contains("open")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hideSidebar();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      sidebarEl.querySelectorAll(
+        'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((item) => !item.hidden);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
   // File click delegation
   if (sidebarFileList) {
     sidebarFileList.addEventListener("click", (e) => {
@@ -184,14 +231,6 @@ export function initSidebar(options = {}) {
       if (!fileName) return;
       const entry = currentFiles.find((f) => f.name === fileName);
       if (onFileClick) onFileClick(fileName, entry || { name: fileName });
-    });
-    // Keyboard support
-    sidebarFileList.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const item = e.target.closest(".file-sidebar-item");
-      if (!item) return;
-      e.preventDefault();
-      item.click();
     });
   }
 }

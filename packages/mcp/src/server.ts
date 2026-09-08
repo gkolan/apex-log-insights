@@ -21,28 +21,37 @@
  *   }
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+} from "@modelcontextprotocol/sdk/types.js";
 
-import { handleParseLog, parseLogTool } from './tools/parseLog.js';
-import { handleAnalyzePerformance, analyzePerformanceTool } from './tools/analyzePerformance.js';
-import { handleAnalyzeSoql, analyzeSoqlTool } from './tools/analyzeSoql.js';
-import { handleAnalyzeGovernorLimits, analyzeGovernorLimitsTool } from './tools/analyzeGovernorLimits.js';
-import { handleSummarize, summarizeTool } from './tools/summarize.js';
+import { handleParseLog, parseLogTool } from "./tools/parseLog.js";
+import {
+  handleAnalyzePerformance,
+  analyzePerformanceTool,
+} from "./tools/analyzePerformance.js";
+import { handleAnalyzeSoql, analyzeSoqlTool } from "./tools/analyzeSoql.js";
+import {
+  handleAnalyzeGovernorLimits,
+  analyzeGovernorLimitsTool,
+} from "./tools/analyzeGovernorLimits.js";
+import { handleSummarize, summarizeTool } from "./tools/summarize.js";
+import { compareLogsTool, handleCompareLogs } from "./tools/compareLogs.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkgJson = JSON.parse(readFileSync(resolve(__dirname, '..', 'package.json'), 'utf8'));
+const pkgJson = JSON.parse(
+  readFileSync(resolve(__dirname, "..", "package.json"), "utf8"),
+);
 
 const server = new Server(
   {
-    name: 'apex-log-insights',
+    name: "apex-log-insights",
     version: pkgJson.version,
   },
   {
@@ -60,6 +69,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     analyzeSoqlTool,
     analyzeGovernorLimitsTool,
     summarizeTool,
+    compareLogsTool,
   ],
 }));
 
@@ -67,16 +77,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   switch (name) {
-    case 'parse_apex_log':
+    case "parse_apex_log":
       return handleParseLog(args);
-    case 'analyze_performance':
+    case "analyze_performance":
       return handleAnalyzePerformance(args);
-    case 'analyze_soql':
+    case "analyze_soql":
       return handleAnalyzeSoql(args);
-    case 'analyze_governor_limits':
+    case "analyze_governor_limits":
       return handleAnalyzeGovernorLimits(args);
-    case 'summarize_log':
+    case "summarize_log":
       return handleSummarize(args);
+    case "compare_logs":
+      return handleCompareLogs(args);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -85,18 +97,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Apex Log Insights MCP server running on stdio');
+  console.error("Apex Log Insights MCP server running on stdio");
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });
 
 // Graceful shutdown
 const shutdown = () => {
-  console.error('MCP server shutting down...');
+  console.error("MCP server shutting down...");
   process.exit(0);
 };
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

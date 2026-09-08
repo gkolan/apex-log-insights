@@ -6,4 +6,5 @@ export type JsonPrimitive = string | number | boolean | null;
  * JSON values, or an object whose values are themselves JSON values.
  * Used throughout the report layer to ensure serialisability.
  */
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+  JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };

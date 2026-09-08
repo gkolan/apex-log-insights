@@ -1,0 +1,25 @@
+ignores:
+  files:
+    - "**/.claude/**"
+    - "**/dist/**"
+    - "**/node_modules/**"
+    - "**/shared/app.js"
+    - "**/apex-parser-worker.js"
+    - "docs/releases/**"
+    # Code Analyzer CPD cannot lex the nested template literals in these valid
+    # browser modules. Project ESLint and renderer tests still cover them.
+    - "viewer/modules/render-data.js"
+    - "viewer/modules/render-diagnostics.js"
+    - "viewer/modules/render-evidence.js"
+    - "viewer/modules/render-execution.js"
+
+engines:
+  cpd:
+    minimum_tokens:
+      javascript: 300
+      typescript: 300
+  eslint:
+    eslint_config_file: "./eslint.config.mjs"
+    disable_javascript_base_config: true
+    disable_typescript_base_config: true
+    disable_lwc_base_config: true

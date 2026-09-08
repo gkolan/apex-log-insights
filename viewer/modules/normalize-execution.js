@@ -1,19 +1,12 @@
 // Execution-related normalization (phases, triggers, timeline, managed packages)
 
 import { byNumberDesc } from "./shared-format.js";
-import { toArray, first, collectPhases } from "./normalize-helpers.js";
-
-export function normalizeExecutionContext(report) {
-  const ctx = report?.context?.executionContext;
-  if (!ctx) return null;
-  return {
-    type: first(ctx?.type, "unknown"),
-    label: first(ctx?.label, ctx?.type, "Unknown"),
-    confidence: first(ctx?.confidence, "inferred"),
-    signals: toArray(ctx?.signals),
-    phaseModel: first(ctx?.phaseModel, "trigger"),
-  };
-}
+import {
+  toArray,
+  first,
+  collectPhases,
+  numberOrNull,
+} from "./normalize-helpers.js";
 
 export function normalizePhaseDetails(phases) {
   return phases.map((phase) => {
@@ -134,16 +127,50 @@ export function normalizeChainItem(item, index) {
     id: first(item?.id, `execution-${index + 1}`),
     label: first(item?.label, item?.name, item?.eventType, "Execution Block"),
     category: first(item?.category, item?.type, item?.cpuType, "Block"),
-    durationMs: Number(first(item?.durationMs, timing?.durationMs, item?.duration, 0) || 0),
+    durationMs: numberOrNull(
+      first(item?.durationMs, timing?.durationMs, item?.duration),
+    ),
     evidence,
   };
 }
 
+function normalizeExecutionTree(blocks) {
+  const byParent = new Map();
+  for (const block of blocks) {
+    const parentId = block?.parentId ?? null;
+    const children = byParent.get(parentId) || [];
+    children.push(block);
+    byParent.set(parentId, children);
+  }
+  const result = [];
+  const seen = new Set();
+  function visit(block, depth) {
+    if (!block || depth > 100 || seen.has(block)) return;
+    seen.add(block);
+    result.push({ ...normalizeChainItem(block, result.length), depth });
+    for (const child of byParent.get(block?.id) || []) visit(child, depth + 1);
+  }
+  for (const root of byParent.get(null) || []) visit(root, 0);
+  for (const block of blocks) visit(block, 0);
+  return result;
+}
+
 export function normalizeExecution(report) {
   const blocks = toArray(report?.execution?.blocks);
+  const executionPhases = toArray(report?.executionPhases);
   const rootBlocks = blocks
     .filter((block) => block?.parentId === null || block?.parentId === undefined)
     .map(normalizeChainItem);
+  const chain =
+    rootBlocks.length > 0
+      ? rootBlocks
+      : executionPhases
+          .slice()
+          .sort(
+            (left, right) =>
+              Number(left?.phaseIndex || 0) - Number(right?.phaseIndex || 0),
+          )
+          .map(normalizeChainItem);
   const phases = collectPhases(report);
   const hotspots = (
     toArray(report?.performance?.hotspots).length > 0
@@ -167,10 +194,13 @@ export function normalizeExecution(report) {
     packageName: first(item?.package, item?.namespace, "package"),
   }));
   const phaseDetails = normalizePhaseDetails(phases);
+  const tree = normalizeExecutionTree(blocks);
 
   return {
-    chain: rootBlocks,
-    chainTotalCount: rootBlocks.length,
+    chain,
+    chainTotalCount: chain.length,
+    tree,
+    treeTotalCount: tree.length,
     phases: phases.map((phase) => ({
       id: phase?.id,
       name: first(phase?.name, phase?.label, phase?.id, "Phase"),
@@ -181,10 +211,21 @@ export function normalizeExecution(report) {
     })),
     phaseDetails,
     hotspots,
-    hotspotTotalCount: hotspots.length,
+    hotspotTotalCount: Number.isFinite(
+      Number(report?.performance?.hotspotsMeta?.totalCount),
+    )
+      ? Number(report.performance.hotspotsMeta.totalCount)
+      : hotspots.length,
+    hotspotsTruncated: Boolean(report?.performance?.hotspotsMeta?.truncated),
     packages,
     triggerNames: toArray(report?.overview?.whatRan?.triggerNames),
     triggerCascade: normalizeTriggerCascade(report),
+    triggerCascadeTotalCount: Number.isFinite(
+      Number(report?.triggerCascadeMeta?.totalCount),
+    )
+      ? Number(report.triggerCascadeMeta.totalCount)
+      : toArray(report?.triggerCascade).length,
+    triggerCascadeTruncated: Boolean(report?.triggerCascadeMeta?.truncated),
     managedImpact: normalizeManagedImpact(report),
     timelineSummary: normalizeTimelineSummary(report),
   };

@@ -1,45 +1,55 @@
-# @apex-log-insights/cli
+# `@apex-log-insights/cli`
 
-Command-line tool for analyzing Salesforce Apex debug logs in the browser.
+Use this package when you want to open a local Apex debug log or directory from a terminal. The CLI starts a local HTTP server, opens the Apex Log Insights viewer, and parses the selected log in a browser Web Worker without uploading it.
 
-## Install
+## Requirements and installation
+
+Follow the [source-build instructions](../../docs/user-guides/getting-started.md#build-from-source) first. The CLI bundles its parser and has no runtime dependencies. Public npm installation is not currently verified; check [availability](../../docs/user-guides/getting-started.md#availability).
 
 ```bash
-# Global install
-npm install -g @apex-log-insights/cli
-
-# Or run without installing
-npx @apex-log-insights/cli debug.log
+node packages/cli/dist/bin.js /path/to/debug.log
 ```
+
+Run from the repository root after building. Replace the example path with your log path and quote paths containing spaces. The examples below use the same built entry point.
 
 ## Usage
 
 ```bash
-# Open a single log in the browser
-apex-log debug.log
-
-# Open a folder of logs
-apex-log ./logs/
-
-# Specify a port
-apex-log debug.log --port 3000
-
-# Prevent auto-opening the browser
-apex-log debug.log --no-open
+node packages/cli/dist/bin.js debug.log
+node packages/cli/dist/bin.js ./directory-of-logs
+node packages/cli/dist/bin.js debug.log --port 3000
+node packages/cli/dist/bin.js debug.log --no-open
 ```
 
-### Flags
+| Option            | Behavior                                            |
+| ----------------- | --------------------------------------------------- |
+| `--port <number>` | Bind a specific port; `0` selects an available port |
+| `--no-open`       | Print the local URL without opening a browser       |
+| `--debug`         | Include a stack trace when startup fails            |
+| `--help`, `-h`    | Show supported usage                                |
 
-| Flag | Description |
-|------|-------------|
-| `--port <number>` | Port for the local server (default: auto) |
-| `--no-open` | Do not open the browser automatically |
-| `--debug` | Show full stack traces on error |
+The positional path must exist and be a readable `.log` file or directory containing logs. Stop the server with `Ctrl+C`.
 
-Logs are parsed client-side — nothing is written to disk.
+Raw logs are limited to 25 MiB. The server validates and reads each request through one nonblocking, no-follow file handle, rejects non-regular files, and remains bounded if a file grows after its initial size check. Small responses begin with a 64 KiB allocation and grow only with observed content. The parser worker independently enforces the same boundary without allocating a second encoded copy of the complete log. The worker accepts only `PARSE_LOG` messages with non-empty text and an optional non-empty string file identifier, so malformed direct messages cannot corrupt report source metadata.
 
-## Build
+## Privacy
 
-```bash
-pnpm --filter @apex-log-insights/cli build
-```
+The server listens only on `127.0.0.1`, and log parsing occurs in the browser. In single-file mode, HTTP requests can read only the selected `.log` file. In folder mode, requests can read only regular `.log` files inside the selected directory; symbolic links and special files such as named pipes are not followed or served. Treat the printed URL as local access to that scope. See the repository [Privacy and security guide](../../docs/user-guides/privacy.md).
+
+## Implementation reference
+
+For source changes, use [Contributing](../../CONTRIBUTING.md). The CLI serves the canonical files under `viewer/`; it does not own a separate UI implementation.
+
+Parser workers are emitted as classic IIFEs because the viewer creates them with the classic `Worker` API. Load and parse failures stay in the document as retryable status panels; the CLI does not use blocking browser alerts.
+
+### Local server endpoints
+
+| Endpoint       | Purpose                                              |
+| -------------- | ---------------------------------------------------- |
+| `/api/health`  | Reports server mode and supported local capabilities |
+| `/api/logs`    | Lists accessible `.log` files                        |
+| `/logs/<name>` | Reads an accessible log for client-side parsing      |
+
+Only `GET` and `HEAD` are accepted. In single-file mode, `/api/logs` returns only the selected file. Responses include restrictive content, framing, and referrer headers.
+
+The exported `startViewServer()` function returns the bound loopback URL, assigned port, and an asynchronous, idempotent `close()` method. Applications embedding the server retain ownership of signal handling and process shutdown.

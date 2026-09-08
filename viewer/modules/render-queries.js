@@ -1,7 +1,7 @@
-import { evidenceButton } from "./shared-evidence.js";
+import { logLineCell, sourceLineCell } from "./shared-evidence.js";
 import { escapeHtml, formatMs, num } from "./shared-format.js";
 
-function isExpanded(state, key) {
+function isQueryOptionActive(state, key) {
   return Array.isArray(state?.expanded) && state.expanded.includes(key);
 }
 
@@ -24,15 +24,21 @@ export function renderValidationBlocks(rows) {
 
   return `
     <div class="stack">
-      ${rows.map((row) => `
+      ${rows
+        .map(
+          (row) => `
         <div class="listCard">
           <strong class="listTitle">${escapeHtml(row.label)}</strong>
           <div class="inlineMeta">${num(row.failedRules.length)} failed of ${num(row.totalRules)} rule(s)</div>
-          ${row.failedRules.length === 0
-            ? '<p class="smallCopy">No failed validation rules in this block.</p>'
-            : `<div class="smallCopy">${escapeHtml(row.failedRules.map((rule) => `${rule.name} (${rule.outcome})`).join(", "))}</div>`}
+          ${
+            row.failedRules.length === 0
+              ? '<p class="smallCopy">No failed validation rules in this block.</p>'
+              : `<div class="smallCopy">${escapeHtml(row.failedRules.map((rule) => `${rule.name} (${rule.outcome})`).join(", "))}</div>`
+          }
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -44,14 +50,18 @@ export function renderSoqlPatterns(rows) {
 
   return `
     <div class="stack">
-      ${rows.map((row) => `
+      ${rows
+        .map(
+          (row) => `
         <div class="listCard">
-          <strong class="listTitle">${escapeHtml(row.targetObject)}${row.isLoopSuspect ? ' <span class="smallCopy">· N+1 Candidate</span>' : ''}</strong>
-          <div class="inlineMeta">${num(row.executionCount)} execution(s) · ${num(row.totalRows)} row(s) · ${escapeHtml(formatMs(row.avgDurationMs))} avg</div>
+          <strong class="listTitle">${escapeHtml(row.targetObject)}${row.isLoopSuspect ? ' <span class="smallCopy">&middot; N+1 Candidate</span>' : ""}</strong>
+          <div class="inlineMeta">${num(row.executionCount)} execution(s) &middot; ${num(row.totalRows)} row(s) &middot; ${escapeHtml(formatMs(row.avgDurationMs))} avg</div>
           <div class="smallCopy">${escapeHtml(row.pattern)}</div>
           ${row.loopEvidence ? `<div class="smallCopy">${escapeHtml(row.loopEvidence)}</div>` : ""}
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -61,18 +71,27 @@ export function renderSoqlGrouped(allPatterns, allSoql, state) {
     return '<p class="smallCopy">No SOQL pattern data available for grouped view.</p>';
   }
 
-  const sortByCount = isExpanded(state, "soql-sort-count");
-  const sortByRows = isExpanded(state, "soql-sort-rows");
-  const sortKey = sortByCount ? "executionCount" : sortByRows ? "totalRows" : "totalDurationMs";
+  const sortByCount = isQueryOptionActive(state, "soql-sort-count");
+  const sortByRows = isQueryOptionActive(state, "soql-sort-rows");
+  const sortKey = sortByCount
+    ? "executionCount"
+    : sortByRows
+      ? "totalRows"
+      : "totalDurationMs";
 
   const sorted = allPatterns.slice().sort((a, b) => {
-    if (sortKey === "executionCount") return b.executionCount - a.executionCount;
+    if (sortKey === "executionCount")
+      return b.executionCount - a.executionCount;
     if (sortKey === "totalRows") return b.totalRows - a.totalRows;
     return b.totalDurationMs - a.totalDurationMs;
   });
 
   // "Total Duration" button removes whichever alternate sort is active (returns to default)
-  const durationResetKey = sortByCount ? "soql-sort-count" : sortByRows ? "soql-sort-rows" : "";
+  const durationResetKey = sortByCount
+    ? "soql-sort-count"
+    : sortByRows
+      ? "soql-sort-rows"
+      : "";
   const isDurationActive = !sortByCount && !sortByRows;
 
   const soqlById = new Map(allSoql.map((s) => [s.id, s]));
@@ -92,12 +111,17 @@ export function renderSoqlGrouped(allPatterns, allSoql, state) {
           </tr>
         </thead>
         <tbody>
-          ${sorted.map((pat) => {
-            const expandKey = `soql-group-${pat.id}`;
-            const expanded = isExpanded(state, expandKey);
-            const children = pat.queryIds.map((id) => soqlById.get(id)).filter(Boolean);
-            const n1Badge = pat.isLoopSuspect ? ' <span class="n1Badge">N+1</span>' : "";
-            return `
+          ${sorted
+            .map((pat) => {
+              const expandKey = `soql-group-${pat.id}`;
+              const expanded = isQueryOptionActive(state, expandKey);
+              const children = pat.queryIds
+                .map((id) => soqlById.get(id))
+                .filter(Boolean);
+              const n1Badge = pat.isLoopSuspect
+                ? ' <span class="n1Badge">N+1</span>'
+                : "";
+              return `
               <tr class="soqlGroupRow${pat.isLoopSuspect ? " n1Suspect" : ""}">
                 <td>
                   <div class="soqlGroupLabel"><code class="soql-preview-block">${escapeHtml(pat.pattern)}</code>${n1Badge}</div>
@@ -109,27 +133,41 @@ export function renderSoqlGrouped(allPatterns, allSoql, state) {
                 <td>${escapeHtml(formatMs(pat.avgDurationMs))}</td>
                 <td>${children.length > 0 ? `<button class="actionBtn" type="button" data-toggle-section="${escapeHtml(expandKey)}">${expanded ? "Hide" : "Show"}</button>` : ""}</td>
               </tr>
-              ${expanded && children.length > 0 ? `
+              ${
+                expanded && children.length > 0
+                  ? `
                 <tr class="soqlSubRow">
                   <td colspan="6">
                     <table class="soqlSubTable">
-                      <thead><tr><th>SOQL</th><th>Rows</th><th>Duration</th><th>Evidence</th></tr></thead>
+                      <thead><tr><th>SOQL</th><th>Rows</th><th>Duration</th><th>Source line</th><th>Log line</th></tr></thead>
                       <tbody>
-                        ${children.map((item) => `
+                        ${children
+                          .map(
+                            (item) => `
                           <tr>
-                            <td><code class="soql-preview-block">${escapeHtml(String(item.label || "").replace(/\s+/g, " ").trim())}</code></td>
+                            <td><code class="soql-preview-block">${escapeHtml(
+                              String(item.label || "")
+                                .replace(/\s+/g, " ")
+                                .trim(),
+                            )}</code></td>
                             <td>${num(item.rows)}</td>
                             <td>${escapeHtml(formatMs(item.durationMs))}</td>
-                            <td>${evidenceButton(item, "Line") || "-"}</td>
+                            <td>${sourceLineCell(item)}</td>
+                            <td>${logLineCell(item)}</td>
                           </tr>
-                        `).join("")}
+                        `,
+                          )
+                          .join("")}
                       </tbody>
                     </table>
                   </td>
                 </tr>
-              ` : ""}
+              `
+                  : ""
+              }
             `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -138,24 +176,28 @@ export function renderSoqlGrouped(allPatterns, allSoql, state) {
 
 export function renderCallouts(rows) {
   if (rows.length === 0) {
-    return '<tr><td colspan="6">No callout data.</td></tr>';
+    return '<tr><td colspan="7">No callout data.</td></tr>';
   }
 
-  return rows.map((item) => {
-    const status = item.statusCode !== null
-      ? `${item.statusCode}${item.statusText ? ` ${item.statusText}` : ""}`
-      : "-";
-    return `
+  return rows
+    .map((item) => {
+      const status =
+        item.statusCode !== null
+          ? `${item.statusCode}${item.statusText ? ` ${item.statusText}` : ""}`
+          : "-";
+      return `
       <tr>
         <td>${escapeHtml(item.method || "UNKNOWN")}</td>
         <td>${escapeHtml(item.host || "-")}</td>
         <td>${escapeHtml(item.endpoint || "Callout")}</td>
         <td>${escapeHtml(status)}</td>
         <td>${escapeHtml(formatMs(item.durationMs))}</td>
-        <td>${evidenceButton(item, "Line") || "-"}</td>
+        <td>${sourceLineCell(item)}</td>
+        <td>${logLineCell(item)}</td>
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 export function renderNamedCredentials(rows) {
@@ -165,17 +207,20 @@ export function renderNamedCredentials(rows) {
 
   return `
     <div class="stack">
-      ${rows.map((item) => {
-        const status = item.statusCode !== null
-          ? `${item.statusCode}${item.statusText ? ` ${item.statusText}` : ""}`
-          : null;
-        return `
+      ${rows
+        .map((item) => {
+          const status =
+            item.statusCode !== null
+              ? `${item.statusCode}${item.statusText ? ` ${item.statusText}` : ""}`
+              : null;
+          return `
           <div class="listCard">
             <strong class="listTitle">${escapeHtml(item.credentialName)}</strong>
-            <div class="inlineMeta">${escapeHtml(item.method || "-")}${item.endpoint ? ` · ${escapeHtml(item.endpoint)}` : ""}${status ? ` · ${escapeHtml(status)}` : ""} · ${escapeHtml(formatMs(item.durationMs))}</div>
+            <div class="inlineMeta">${escapeHtml(item.method || "-")}${item.endpoint ? ` &middot; ${escapeHtml(item.endpoint)}` : ""}${status ? ` &middot; ${escapeHtml(status)}` : ""} &middot; ${escapeHtml(formatMs(item.durationMs))}</div>
           </div>
         `;
-      }).join("")}
+        })
+        .join("")}
     </div>
   `;
 }

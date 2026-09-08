@@ -19,17 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-## Third-Party Code
-
-This project includes vendored code from:
-
-### Certinia ApexLogParser (packages/core/src/certinia/)
-
-Copyright (c) 2020 Certinia Inc. All rights reserved.
-Licensed under the BSD 3-Clause License.
-https://github.com/certinia/debug-log-analyzer
-
-See packages/core/src/certinia/ files for individual copyright headers.

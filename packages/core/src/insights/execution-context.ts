@@ -10,7 +10,7 @@ import type {
   ExecutionContextType,
   PhaseModelId,
   ParsedVariableAssignment,
-} from './types.js';
+} from "./types.js";
 
 /**
  * Auto-detects execution context (anonymous apex, trigger, scheduled, batch, future, queueable, etc.) from root code unit, events, and variable assignments.
@@ -28,162 +28,190 @@ export function detectExecutionContext(
   allEvents: FlatEvent[],
   variableAssignments: ParsedVariableAssignment[],
 ): ExecutionContextDetection {
-  const root = String(rootCodeUnit || '').toLowerCase();
+  const root = String(rootCodeUnit || "").toLowerCase();
+  let anonymousEvent = false;
+  let futureEvent = false;
+  let queueableEvent = false;
+  let batchEvent = false;
+  let platformEvent = false;
+  let triggerEvent = false;
+  let scheduledEvent = false;
+
+  // Collect direct event evidence once. Context detection runs for every report,
+  // and large logs should not be rescanned for each possible context type.
+  for (const event of allEvents) {
+    const text = event.text || "";
+    if (event.type === "CODE_UNIT_STARTED") {
+      anonymousEvent ||= /execute_anonymous_apex|execute anonymous/i.test(text);
+      scheduledEvent ||= /\bschedulable\b|scheduled\s+apex/i.test(text);
+      platformEvent ||= /platform event|__e\b/i.test(text);
+      triggerEvent ||= /\btrigger event\b/i.test(text);
+    }
+
+    futureEvent ||= event.type === "FUTURE_METHOD_BEGIN";
+    queueableEvent ||=
+      event.type === "QUEUEABLE_BEGIN" ||
+      (event.type === "SYSTEM_METHOD_ENTRY" &&
+        /QueueableContextImpl/i.test(text));
+    batchEvent ||=
+      event.type === "BATCH_APEX_START_BEGIN" ||
+      event.type === "BATCH_APEX_EXECUTE_BEGIN";
+    platformEvent ||=
+      event.type.startsWith("EVENT_SERVICE_") &&
+      /__e\b|platform event/i.test(text);
+  }
 
   // Anonymous Apex — most distinctive, check first
   if (
     /execute_anonymous_apex|execute anonymous/i.test(root) ||
-    allEvents.some((e) => e.type === 'CODE_UNIT_STARTED' && /execute_anonymous_apex|execute anonymous/i.test(e.text || ''))
+    anonymousEvent
   ) {
     return {
-      type: 'anonymous_apex',
-      label: 'Anonymous Apex',
-      confidence: 'direct',
-      signals: ['CODE_UNIT_STARTED text contains execute anonymous'],
-      contextSource: 'auto',
-      phaseModel: 'anonymous',
+      type: "anonymous_apex",
+      label: "Anonymous Apex",
+      confidence: "direct",
+      signals: ["CODE_UNIT_STARTED text contains execute anonymous"],
+      contextSource: "auto",
+      phaseModel: "anonymous",
     };
   }
 
   // Future method
-  if (allEvents.some((e) => e.type === 'FUTURE_METHOD_BEGIN')) {
+  if (futureEvent) {
     return {
-      type: 'future_method',
-      label: 'Future Method',
-      confidence: 'direct',
-      signals: ['FUTURE_METHOD_BEGIN event found'],
-      contextSource: 'auto',
-      phaseModel: 'async',
+      type: "future_method",
+      label: "Future Method",
+      confidence: "direct",
+      signals: ["FUTURE_METHOD_BEGIN event found"],
+      contextSource: "auto",
+      phaseModel: "async",
     };
   }
 
   // Queueable
-  if (
-    allEvents.some((e) => e.type === 'QUEUEABLE_BEGIN')
-    || allEvents.some((e) => e.type === 'SYSTEM_METHOD_ENTRY' && /QueueableContextImpl/i.test(e.text || ''))
-  ) {
+  if (queueableEvent) {
     return {
-      type: 'queueable',
-      label: 'Queueable Apex',
-      confidence: 'direct',
-      signals: ['QUEUEABLE_BEGIN event found or SYSTEM_METHOD_ENTRY with QueueableContextImpl'],
-      contextSource: 'auto',
-      phaseModel: 'async',
+      type: "queueable",
+      label: "Queueable Apex",
+      confidence: "direct",
+      signals: [
+        "QUEUEABLE_BEGIN event found or SYSTEM_METHOD_ENTRY with QueueableContextImpl",
+      ],
+      contextSource: "auto",
+      phaseModel: "async",
     };
   }
 
-  // Scheduled Apex
-  if (
-    root.includes('schedulable') ||
-    root.includes('scheduledapex') ||
-    allEvents.some(
-      (e) => e.type === 'CODE_UNIT_STARTED' && /schedulable|scheduled apex/i.test(e.text || ''),
-    )
-  ) {
+  // Direct Batch Apex evidence must outrank derived class-name heuristics.
+  if (batchEvent) {
     return {
-      type: 'scheduled',
-      label: 'Scheduled Apex',
-      confidence: 'derived',
-      signals: ['rootCodeUnit or CODE_UNIT_STARTED contains Schedulable/Scheduled'],
-      contextSource: 'auto',
-      phaseModel: 'scheduled',
+      type: "batch_execute",
+      label: "Batch Apex",
+      confidence: "direct",
+      signals: [
+        "BATCH_APEX_START_BEGIN or BATCH_APEX_EXECUTE_BEGIN event found",
+      ],
+      contextSource: "auto",
+      phaseModel: "batch",
     };
   }
-
-  // Batch Apex — check events first, then heuristics
-  if (allEvents.some((e) => e.type === 'BATCH_APEX_START_BEGIN' || e.type === 'BATCH_APEX_EXECUTE_BEGIN')) {
-    return {
-      type: 'batch_execute',
-      label: 'Batch Apex',
-      confidence: 'direct',
-      signals: ['BATCH_APEX_START_BEGIN or BATCH_APEX_EXECUTE_BEGIN event found'],
-      contextSource: 'auto',
-      phaseModel: 'batch',
-    };
-  }
-  if (
-    variableAssignments.some((v) => v.variableName === 'scope' && (Array.isArray(v.parsedValue) || (typeof v.parsedValue === 'object' && v.parsedValue !== null))) ||
-    root.includes('batch') ||
-    root.includes('batchable')
-  ) {
-    return {
-      type: 'batch_execute',
-      label: 'Batch Apex',
-      confidence: 'derived',
-      signals: ['scope variable assignment or batch in root code unit name'],
-      contextSource: 'auto',
-      phaseModel: 'batch',
-    };
-  }
-
   // Platform Event
   // Salesforce logs do not emit a canonical PLATFORM_EVENT event type.
   // Detect from actual code-unit text patterns and common event-bus markers.
-  if (
-    allEvents.some(
-      (e) =>
-        (e.type === 'CODE_UNIT_STARTED' && /platform event|__e\b/i.test(e.text || ''))
-        || (e.type.startsWith('EVENT_SERVICE_') && /__e\b|platform event/i.test(e.text || '')),
-    )
-  ) {
+  if (platformEvent) {
     return {
-      type: 'platform_event',
-      label: 'Platform Event',
-      confidence: 'direct',
-      signals: ['CODE_UNIT_STARTED/EVENT_SERVICE_* indicates platform event context'],
-      contextSource: 'auto',
-      phaseModel: 'trigger',
+      type: "platform_event",
+      label: "Platform Event",
+      confidence: "direct",
+      signals: [
+        "CODE_UNIT_STARTED/EVENT_SERVICE_* indicates platform event context",
+      ],
+      contextSource: "auto",
+      phaseModel: "trigger",
     };
   }
 
   // Synchronous trigger
+  if (/\btrigger event\b/i.test(root) || triggerEvent) {
+    return {
+      type: "synchronous_trigger",
+      label: "Trigger",
+      confidence: "direct",
+      signals: ["rootCodeUnit or CODE_UNIT_STARTED contains trigger event"],
+      contextSource: "auto",
+      phaseModel: "trigger",
+    };
+  }
+
+  // Scheduled Apex has no dedicated debug-log event, so use its text markers
+  // only after every canonical asynchronous and trigger signal was considered.
+  if (/(?:schedulable|scheduledapex)(?:[.$]|$)/i.test(root) || scheduledEvent) {
+    return {
+      type: "scheduled",
+      label: "Scheduled Apex",
+      confidence: "derived",
+      signals: [
+        "rootCodeUnit or CODE_UNIT_STARTED contains Schedulable/Scheduled",
+      ],
+      contextSource: "auto",
+      phaseModel: "scheduled",
+    };
+  }
+
+  // Older or incomplete logs may omit canonical Batch Apex begin events.
   if (
-    root.includes('trigger') ||
-    allEvents.some((e) => e.type === 'CODE_UNIT_STARTED' && /trigger event/i.test(e.text || ''))
+    variableAssignments.some(
+      (variable) =>
+        variable.variableName === "scope" &&
+        (Array.isArray(variable.parsedValue) ||
+          (typeof variable.parsedValue === "object" &&
+            variable.parsedValue !== null)),
+    ) ||
+    /batch(?:able)?(?:[.$]|$)/i.test(root)
   ) {
     return {
-      type: 'synchronous_trigger',
-      label: 'Trigger',
-      confidence: 'direct',
-      signals: ['rootCodeUnit or CODE_UNIT_STARTED contains trigger event'],
-      contextSource: 'auto',
-      phaseModel: 'trigger',
+      type: "batch_execute",
+      label: "Batch Apex",
+      confidence: "derived",
+      signals: ["scope variable assignment or batch in root code unit name"],
+      contextSource: "auto",
+      phaseModel: "batch",
     };
   }
 
   return {
-    type: 'apex_class',
-    label: 'Apex Class',
-    confidence: 'derived',
-    signals: ['no specific context signals found, defaulting to Apex Class'],
-    contextSource: 'auto',
-    phaseModel: 'trigger',
+    type: "apex_class",
+    label: "Apex Class",
+    confidence: "derived",
+    signals: ["no specific context signals found, defaulting to Apex Class"],
+    contextSource: "auto",
+    phaseModel: "trigger",
   };
 }
 
 // Maps a CLI --context value to its display label.
 const CONTEXT_TYPE_LABELS: Record<string, string> = {
-  anonymous_apex: 'Anonymous Apex',
-  queueable: 'Queueable Apex',
-  future_method: 'Future Method',
-  batch_execute: 'Batch Apex',
-  scheduled: 'Scheduled Apex',
-  platform_event: 'Platform Event',
-  synchronous_trigger: 'Trigger',
-  apex_class: 'Apex Class',
+  anonymous_apex: "Anonymous Apex",
+  queueable: "Queueable Apex",
+  future_method: "Future Method",
+  batch_execute: "Batch Apex",
+  scheduled: "Scheduled Apex",
+  platform_event: "Platform Event",
+  synchronous_trigger: "Trigger",
+  apex_class: "Apex Class",
 };
 
 // Maps execution context type to the appropriate phase model.
 const CONTEXT_TO_PHASE_MODEL: Record<string, PhaseModelId> = {
-  anonymous_apex: 'anonymous',
-  future_method: 'async',
-  queueable: 'async',
-  scheduled: 'scheduled',
-  batch_execute: 'batch',
-  platform_event: 'trigger',
-  synchronous_trigger: 'trigger',
-  apex_class: 'trigger',
-  unknown: 'trigger',
+  anonymous_apex: "anonymous",
+  future_method: "async",
+  queueable: "async",
+  scheduled: "scheduled",
+  batch_execute: "batch",
+  platform_event: "trigger",
+  synchronous_trigger: "trigger",
+  apex_class: "trigger",
+  unknown: "trigger",
 };
 
 /**
@@ -195,16 +223,19 @@ const CONTEXT_TO_PHASE_MODEL: Record<string, PhaseModelId> = {
  * @param contextValue - The context override value (e.g., 'anonymous_apex', 'batch_execute', 'synchronous_trigger')
  * @returns ExecutionContextDetection if the value is valid, null otherwise
  */
-export function buildContextOverride(contextValue: string): ExecutionContextDetection | null {
+export function buildContextOverride(
+  contextValue: string,
+): ExecutionContextDetection | null {
+  if (!Object.hasOwn(CONTEXT_TYPE_LABELS, contextValue)) return null;
   const label = CONTEXT_TYPE_LABELS[contextValue];
   if (!label) return null;
   return {
     type: contextValue as ExecutionContextType,
     label,
-    confidence: 'override',
+    confidence: "override",
     signals: [`--context flag: ${contextValue}`],
-    contextSource: 'override',
-    phaseModel: CONTEXT_TO_PHASE_MODEL[contextValue] ?? 'trigger',
+    contextSource: "override",
+    phaseModel: CONTEXT_TO_PHASE_MODEL[contextValue] ?? "trigger",
   };
 }
 

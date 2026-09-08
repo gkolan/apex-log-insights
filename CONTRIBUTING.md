@@ -1,325 +1,217 @@
-# Contributing & Bug-Fix Process
+# Contributing
 
-This document is the canonical guide for fixing bugs, adding features, and building
-all distribution targets. It is written for Claude, Codex, and human engineers.
+Use this guide to set up the repository, find the layer that owns a change, implement it, and prove that the repository remains healthy. Before editing, read [Architecture](docs/development/architecture.md) and the [Style guide](STYLE_GUIDE.md). Documentation changes also follow the [Documentation standard](docs/development/documentation-standard.md), [Writing guide](docs/development/writing-guide.md), and [Project terminology](docs/reference/terminology.md).
 
----
+## Prerequisites
 
-## Architecture in One Sentence
-
-**TypeScript parses → report builder structures → viewer renders.**
-Fix bugs at the lowest layer where they actually originate.
-
----
-
-## Monorepo Layout
-
-```
-packages/
-  core/                    ← shared parsing engine (zero runtime dependencies)
-    src/
-      certinia/            ← vendored Certinia parser (ApexLogParser, LogEvents, etc.)
-      insights/            ← analysis modules (governor, execution, database, etc.)
-      parserCore.ts        ← wraps Certinia parser; builds NormalizedParseResult
-      insightsReport.ts    ← entry point: imports from insights/* + buildInsightsReport
-      offlineReport.ts     ← final OfflineReportV2 assembly (the 20-phase model)
-      phases.ts            ← phase IDs + definitions
-      report.ts            ← shared types + deterministic report builder
-      index.ts             ← barrel export (public API for all other packages)
-
-  cli/                     ← command-line interface
-    src/
-      bin.ts               ← CLI entry — file I/O only, imports from @apex-log-insights/core
-
-  mcp/                     ← MCP server for AI tools (Claude, Cursor, etc.)
-    src/
-      server.ts            ← stdio MCP server entry
-      tools/               ← one file per MCP tool (parseLog, analyzeSoql, etc.)
-
-  browser-ext/             ← browser extension (Chrome, Edge, Firefox)
-    src/
-      worker-entry.ts      ← Web Worker entry (calls parseLog → buildOfflineReport)
-      perf-shim.ts         ← node:perf_hooks polyfill for browser builds
-    manifests/             ← per-browser manifest.json files
-    scripts/               ← per-browser build scripts
-
-viewer/                    ← offline HTML viewer (vanilla JS, no build step)
-  modules/
-    normalize-report.js    ← single place that handles format differences
-    render-*.js            ← one module per view (never add format checks here)
-    load-report.js         ← loads JSON report file
-    shared-*.js            ← utilities
-
-fixtures/                  ← shared test log files used across packages
-scripts/                   ← repo-level build utilities
-  sync-versions.mjs        ← propagates root version to all packages/manifests
-  assemble-extension-ui.ts ← merges viewer sources into extension shared/ assets
-  export-extension.ts      ← full release pipeline (bump + build + zip all browsers)
-  check-version-sync.ts    ← CI check that all versions match
-```
-
----
-
-## The Three-Layer Rule
-
-Before touching any code, identify which layer owns the bug:
-
-```
-Layer 1 — Parser      packages/core/src/certinia/LogEvents.ts, ApexLogParser.ts
-           "Is the raw event data captured in the parse result?"
-
-Layer 2 — Report      packages/core/src/insights/*.ts, insightsReport.ts, offlineReport.ts
-           "Is the data structured and exposed in the report JSON?"
-
-Layer 3 — Renderer    viewer/modules/render-*.js, packages/browser-ext/app.js
-           "Is the data displayed correctly once it arrives?"
-```
-
-**Diagnostic sequence — always follow this order:**
-
-1. Open a sample `.log` file in a text editor. Confirm the raw event line exists.
-2. Run `pnpm dev:cli -- parse fixtures/simple.log --pretty` and inspect the JSON.
-   - Is the field present? If not → Layer 2 bug (report builder).
-   - Is the field absent from the raw log itself? → Layer 1 bug (parser).
-3. Open the viewer with the JSON report loaded.
-   - Is the field in the JSON but not shown? → Layer 3 bug (renderer).
-
-**Never patch the renderer to work around a parser gap.
-Never add format checks in a render module — that belongs in `normalize-report.js`.**
-
----
-
-## Bug Fix Workflows
-
-### Workflow A — Parser bug (Layer 1)
-
-*Symptom: parse output is missing a field, or a field has the wrong value.*
-
-1. Find the event class in `packages/core/src/certinia/LogEvents.ts`.
-2. Fix the field extraction in the constructor.
-3. If the event type is new, register it in `packages/core/src/certinia/LogLineMapping.ts`.
-4. Run `pnpm typecheck` → must pass.
-5. Run `pnpm test` → must pass.
-6. Rebuild the extension worker: `pnpm --filter @apex-log-insights/browser-ext build:worker`.
-
-### Workflow B — Report builder bug (Layer 2)
-
-*Symptom: Field is in parse result but absent from the report JSON.*
-
-1. Find the relevant builder in `packages/core/src/insights/` (e.g. `database.ts` for SOQL/DML).
-2. In `packages/core/src/offlineReport.ts`, include the new field in the returned object.
-3. Run `pnpm typecheck` + `pnpm test` → must pass.
-4. Rebuild the extension worker.
-
-### Workflow C — Renderer bug (Layer 3)
-
-*Symptom: Field is correct in the JSON report but the UI shows blank or wrong value.*
-
-**For the standalone viewer (`viewer/`):**
-- All report-shape normalization goes in `viewer/modules/normalize-report.js` only.
-- Each view is rendered by one `render-*.js` module.
-
-**For the browser extension (`packages/browser-ext/app.js`):**
-- Fix field resolution inside accessor functions, not at each call-site.
-
----
-
-## Building & Releasing
-
-### Prerequisites
-
-This project uses **pnpm** workspaces. If you don't have pnpm installed:
+- Node.js 18 or later
+- pnpm 9.15.4, managed through Corepack
+- Git
 
 ```bash
-# Option 1: Install via npm
-npm install -g pnpm
-
-# Option 2: Use corepack (bundled with Node 16+)
 corepack enable
 corepack prepare pnpm@9.15.4 --activate
+pnpm install --frozen-lockfile
+pnpm validate
 ```
 
-Then set up the project:
+pnpm is the only supported package manager. Do not create or commit `package-lock.json` or `yarn.lock`.
+
+## Repository map
+
+| Location                                         | Responsibility                                      |
+| ------------------------------------------------ | --------------------------------------------------- |
+| `packages/core/src/certinia/`                    | Raw log parsing and event extraction                |
+| `packages/core/src/insights/`                    | Analysis and structured findings                    |
+| `packages/core/src/offlineReport.ts`             | Canonical viewer-compatible report assembly         |
+| `packages/cli/`                                  | Local viewer server and CLI                         |
+| `packages/mcp/`                                  | MCP server and redaction boundary                   |
+| `packages/vscode-ext/`                           | VS Code host adapter and packaged webview           |
+| `viewer/`                                        | Canonical browser UI shared by viewer and extension |
+| `packages/browser-ext/shared/*-extension-only.*` | Extension-only UI overlays                          |
+| `packages/browser-ext/src/`                      | Extension parser worker source                      |
+| `fixtures/`                                      | Synthetic, reviewed test logs                       |
+| `scripts/`                                       | Build, release, audit, and health checks            |
+
+For generated-file ownership, read [Viewer and extension sources](docs/development/architecture.md#viewer-and-extension-sources).
+
+## Choose the owning layer
+
+Investigate in this order:
+
+1. **Raw log:** Does the expected event exist?
+2. **Parser:** Does `parseLog()` capture it in typed or normalized output?
+3. **Report:** Does `buildOfflineReport()` expose it canonically?
+4. **Normalizer:** Does the view model preserve it safely?
+5. **Renderer:** Does the correct view display it?
+
+Fix the lowest layer that first becomes incorrect. Do not add renderer logic to compensate for missing parser or report data.
+
+## Development commands
+
+| Command              | Purpose                                          |
+| -------------------- | ------------------------------------------------ |
+| `pnpm dev:cli`       | Watch the CLI package                            |
+| `pnpm dev:mcp`       | Watch the MCP package                            |
+| `pnpm dev:vscode`    | Watch the VS Code extension host bundle          |
+| `pnpm test:vscode`   | Build dependencies and run the VS Code host test |
+| `pnpm dev:ext`       | Watch the extension parser worker                |
+| `pnpm format`        | Format every maintained non-UI source and doc    |
+| `pnpm format:check`  | Verify maintained non-UI formatting              |
+| `pnpm test:watch`    | Run Vitest in watch mode                         |
+| `pnpm test:coverage` | Run tests and write local coverage reports       |
+| `pnpm test:corpus`   | Validate the pinned external Certinia sample     |
+| `pnpm audit:docs`    | Score maintained docs against the writing gate   |
+| `pnpm build`         | Build the current version without changing it    |
+| `pnpm validate`      | Run the complete required health gate            |
+| `pnpm audit:report`  | Write security findings under `audit/`           |
+| `pnpm bugs:report`   | Write static-analysis findings under `bugs/`     |
+
+`knip.json` declares runtime and integration-test entry points and excludes generated bundles, downloaded test harnesses, and tool-owned worktrees. Root scripts, tests, and viewer entry points belong to the `"."` workspace because Knip does not apply top-level entry patterns when explicit workspaces are configured. Update the applicable workspace when adding an entry point or generated runtime companion so `pnpm bugs:report` does not classify shipped files as unused or unresolved.
+
+`code-analyzer.yml` applies the repository ESLint rules, excludes generated artifacts, and sets CPD's substantial-duplication threshold to 300 tokens. Four renderer modules are excluded from Code Analyzer because its CPD lexer cannot parse their valid nested template literals; `pnpm lint` and the renderer test suite continue to cover those files. `pnpm audit:report` uses the installed Secretlint and ESLint security packages, fails when a scanner cannot return its expected result, and fails when any finding is written.
+
+### Validation gate
+
+`pnpm validate` runs, in order:
+
+1. Assemble the generated browser UI from the canonical viewer sources;
+2. Prettier check for Git-discovered maintained non-UI sources and documentation;
+3. ESLint;
+4. build the shared core type declarations, then run TypeScript checks for all packages;
+5. all active Vitest tests;
+6. version synchronization;
+7. documentation consistency, local-link and heading-anchor checks, and the 10/10 structural writing audit.
+
+All steps must pass before a commit. Skipped tests must identify an issue or a concrete missing prerequisite; do not use skips to hide a regression.
+
+The formatting inventory includes tracked files and non-ignored new files, then excludes generated browser/viewer assets, UI-only source trees, research notes, and the package-manager lockfile. Discovered paths are passed after Prettier's option terminator so unusual Git filenames cannot become CLI flags. Add a path-level or real-process regression in `__tests__/format-maintained.test.ts` when changing those boundaries.
+
+For the test-class map, coverage floors, and browser-release checks, read [Testing and coverage](docs/development/testing.md).
+
+## Bug-fix workflows
+
+### Parser defect
+
+1. Add the smallest synthetic log line or fixture that reproduces the problem.
+2. Update the event class in `packages/core/src/certinia/LogEvents.ts`.
+3. Register a new event type in both `types.ts` and `LogLineMapping.ts` when necessary.
+4. Assert typed extraction, normalized output, classification, and raw-line evidence.
+5. Parse every committed `.log` fixture and confirm that newly supported records do not remain in `parsingErrors`.
+6. Run `pnpm validate`.
+
+### Report defect
+
+1. Prove the parser already captures the required event.
+2. Update the focused module under `packages/core/src/insights/`.
+3. Expose canonical output through the report assembler.
+4. Add report-shape and evidence assertions.
+5. Update [Report schema](docs/reference/report-schema.md) and decide whether `reportVersion` changes.
+6. Run `pnpm validate`.
+
+### Viewer or extension defect
+
+1. Prove the canonical report contains the correct data.
+2. Put report-format compatibility handling in the normalization modules.
+3. Change `viewer/app.js`, `viewer/index.html`, and `viewer/styles.css` for the shared five-view presentation.
+4. Keep extension-only behavior in the extension overlay sources; do not fork the shared report layout in a host adapter.
+5. Add a focused viewer or normalization test and run `pnpm validate`.
+
+## Adding a report field
+
+Update all applicable parts in one changeset:
+
+- raw event extraction;
+- analysis types and builder;
+- offline report assembly;
+- report schema metadata when compatibility changes;
+- normalization;
+- rendering;
+- synthetic fixture and tests;
+- bounded collection metadata when a field can repeat with log size;
+- [Report schema](docs/reference/report-schema.md), [Feature reference](FEATURES.md), and [Changelog](CHANGELOG.md).
+
+Never leave a producer and consumer on different field names.
+
+## Test data rules
+
+Only synthetic or deliberately sanitized logs may be committed to `fixtures/`.
+
+- Use reserved example values and domains such as `example.com`.
+- Do not copy production tokens, credentials, endpoints, names, or business data.
+- Keep a fixture as small as the behavior permits.
+- Explain unusual sequences in the corresponding test.
+
+See [Privacy and security](docs/user-guides/privacy.md).
+
+For optional large-log compatibility testing, `pnpm test:corpus` downloads the
+pinned public Certinia Debug Log Analyzer sample into the ignored
+`external-corpus/` directory, verifies its byte count and SHA-256 digest, then
+runs parser, report, normalizer, and five-view rendering checks. It prints only
+aggregate counts and removes a newly downloaded sample after the run. Use
+`--keep` to retain the verified sample locally or `--offline` to require an
+already cached copy. Never move external corpus files into `fixtures/`.
+
+## Documentation requirements
+
+Every code change includes documentation in the same changeset.
+
+| Change                                    | Required documentation                                               |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| User-visible behavior or bug fix          | `CHANGELOG.md`; relevant user/package guide                          |
+| Feature added or removed                  | `FEATURES.md`                                                        |
+| Report field or schema behavior           | `docs/reference/report-schema.md`; core API if applicable            |
+| Command, flag, build, or release behavior | this guide; `docs/development/releasing.md`; affected package README |
+| Architecture or ownership                 | `docs/development/architecture.md`, `STYLE_GUIDE.md`, agent guides   |
+| Public name, label, option, or status     | `docs/reference/terminology.md`; affected reference and tests        |
+| Security or data flow                     | `docs/user-guides/privacy.md`; affected package README               |
+
+Do not duplicate long instructions. Update the source-of-truth page and link to it from other pages. The [Documentation index](docs/README.md) lists ownership.
+
+Keep user instructions separate from contributor checks, following the [audience boundary](docs/development/documentation-standard.md#keep-user-guidance-separate-from-contributor-checks). Store point-in-time audit and release evidence under ignored `internal/` or `reports/`; preserve local evidence rather than deleting it to satisfy a check. Public screenshots may retain their synthetic-input provenance, but not audit scorecards.
+
+Read each affected page completely, verify its facts against source, then review its prose and rendered links. Distinguish source builds, local candidates, and published installs. Before handing off a pull request, run the checks and build from `.github/workflows/ci.yml`; after pushing, confirm the hosted validation and VS Code Extension Host jobs pass. Do not call a branch CI-ready while a required check is missing or failing.
+
+Write concrete prose. State what changed, identify the responsible file or command, and explain how the reader can verify it. Avoid promotional claims, generic conclusions, vague attribution, and mechanical formatting. The [Writing guide](docs/development/writing-guide.md) includes examples and a review checklist.
+
+Every maintained page under `docs/` must pass `pnpm audit:docs`. The audit requires a clear title, reader-oriented opening, explicit purpose, ordered headings, an actionable aid, concise paragraphs, readable tables, labeled code fences, final navigation, and prose without em dashes. Automated structure checks supplement factual and editorial review; they do not replace it.
+
+## Versions and releases
+
+The root `package.json` is the version source. `pnpm build` never increments it.
 
 ```bash
-pnpm install       # Install all dependencies
-pnpm build         # Sync versions → build all → export extension
-pnpm test          # Run all tests
-pnpm typecheck     # Type check all packages
-pnpm audit         # Security scan (deps + secrets + eslint-security)
-pnpm bugs          # Bug scan (knip + tsc strict + attw + madge)
-```
-
-### Building Individual Targets
-
-| Target | Command | Output |
-|--------|---------|--------|
-| Core library | `pnpm --filter @apex-log-insights/core build` | `packages/core/dist/` (CJS + ESM) |
-| CLI | `pnpm --filter @apex-log-insights/cli build` | `packages/cli/dist/bin.js` |
-| MCP server | `pnpm --filter @apex-log-insights/mcp build` | `packages/mcp/dist/server.js` |
-| Chrome extension | `pnpm --filter @apex-log-insights/browser-ext build:chrome` | `packages/browser-ext/dist/chrome-extension-v*.zip` |
-| Edge extension | `pnpm --filter @apex-log-insights/browser-ext build:edge` | `packages/browser-ext/dist/edge-extension-v*.zip` |
-| Firefox extension | `pnpm --filter @apex-log-insights/browser-ext build:firefox` | `packages/browser-ext/dist/firefox-extension-v*.xpi` |
-
-### Extension UI Assembly
-
-Running `pnpm build` (the full project build) automatically assembles the extension UI
-as part of the `browser-ext` build step. The `scripts/assemble-extension-ui.ts` script
-merges `viewer/app.js` (up to the `VIEWER_INIT_START` marker) with
-`shared/app-extension-only.js` to produce `shared/app.js`, and merges `viewer/styles.css`
-with `shared/styles-extension-only.css` to produce `shared/styles.css`.
-
-This means any changes to the viewer's `app.js` or `styles.css` are propagated to the
-extension on every `pnpm build`, not just when running per-browser build scripts.
-
-The per-browser scripts (`build:chrome`, `build:edge`, `build:firefox`) also run this
-assembly step before copying shared assets into the dist folder.
-
-### Build Artifacts & Minification
-
-All shipped code is minified via esbuild or tsup. Source maps are handled per package:
-
-| Package | Minified | Source Maps | Reason |
-|---------|----------|-------------|--------|
-| `core` | Yes | Yes | Library consumers need to debug through the code |
-| `cli` | Yes | No | End-user binary — no debugging needed |
-| `mcp` | Yes | No | End-user binary — no debugging needed |
-| `browser-ext` | Yes | No | Extensions run in the browser — no debugging needed |
-
-Source code in `packages/*/src/` is always readable with full comments. Minification only affects the build output in `dist/`. Contributors read the source on GitHub; users get optimized bundles.
-
-### Version Bumping
-
-All packages share a single version number managed from the root `package.json`.
-
-**Option 1 — Manual bump and sync:**
-
-```bash
-# 1. Edit "version" in the root package.json (e.g. 1.1.0 → 1.2.0)
-# 2. Sync the version into all packages and manifests
-node scripts/sync-versions.mjs
-# 3. Build
+# after editing the root version
+pnpm version:bump
+pnpm check:version-sync
+pnpm validate
 pnpm build
 ```
 
-**Option 2 — Bump and build an extension in one step:**
+Browser archives and the VS Code VSIX must contain `THIRD-PARTY-NOTICES.md`
+because their parser bundles include vendored Certinia code.
 
-The browser extension build scripts accept a `--version` flag that bumps the version
-everywhere and then builds:
+Read [Release guide](docs/development/releasing.md) for publishing. Do not claim CI automation exists unless a tested workflow is checked into `.github/workflows/`.
 
-```bash
-# Bump to 1.2.0 and build Chrome extension
-pnpm --filter @apex-log-insights/browser-ext build:chrome -- --version 1.2.0
+### Published package contract
 
-# Same for Edge and Firefox
-pnpm --filter @apex-log-insights/browser-ext build:edge -- --version 1.2.0
-pnpm --filter @apex-log-insights/browser-ext build:firefox -- --version 1.2.0
-
-# Short form with -v
-pnpm --filter @apex-log-insights/browser-ext build:chrome -- -v 1.2.0
-```
-
-This updates the root `package.json`, runs `sync-versions.mjs` (which updates all
-4 package.json files and all 3 browser manifests), then builds. The output zip is
-named with the version: `chrome-extension-v1.2.0.zip`.
-
-Without `--version`, the scripts just rebuild with the current version.
-
-The `sync-versions.mjs` script updates: every `packages/*/package.json` and
-every `manifests/*/manifest.json`.
-
-### Extension Build Output
-
-Each browser build produces two things:
-
-- **Unpacked folder** (e.g. `dist/chrome/`) — for development. Load in the browser via
-  "Load unpacked" in developer mode.
-- **Versioned zip** (e.g. `dist/chrome-extension-v1.2.0.zip`) — for distribution. Upload to
-  the browser store or attach to a GitHub Release.
-
-Old versioned zips are cleaned up automatically on each build.
-
-### Security Audit
-
-CI runs `pnpm audit --audit-level=high` on every push and pull request. The same check
-runs before any npm publish in the release workflow. If a dependency has a known
-high-severity vulnerability, the build fails.
-
-To run the full security audit locally (dependency vulnerabilities + secret detection + eslint-security):
+A published package ships only its `dist` directory. Every bare import that survives bundling must therefore resolve from the package's own `dependencies`; a `workspace:*` entry in `devDependencies` is not installed for consumers. The CLI bundles `@apex-log-insights/core` into `dist/bin.js` and declares no runtime dependencies, while the MCP server keeps core external and declares it. `packages/cli/src/publish-contract.test.ts` fails if the CLI build reintroduces an undeclared external, so verify a packed tarball in an empty directory before changing bundling flags:
 
 ```bash
-pnpm audit                    # Writes each finding to audit/*.md
+pnpm --dir packages/cli pack --pack-destination /tmp
 ```
 
-### Bug Detection
+## Commit messages
 
-To run static bug detection (unused code, unsafe index access, type export issues, circular deps):
+Use the lowest affected layer as the prefix:
 
-```bash
-pnpm bugs                     # Writes each finding to bugs/*.md
-```
+- `parser:`
+- `report:`
+- `viewer:`
+- `extension:`
+- `cli:`
+- `mcp:`
+- `docs:`
+- `build:`
 
-### Release Flow (GitHub Actions)
-
-1. Bump version in root `package.json` (subpackages sync automatically on `pnpm build`)
-2. Update `CHANGELOG.md` with the new version's changes (follow Keep a Changelog format)
-3. Commit and tag: `git tag v1.2.0`
-4. Push the tag — GitHub Actions will:
-   - Audit dependencies for known vulnerabilities
-   - Build and test all packages
-   - Publish `@apex-log-insights/core`, `@apex-log-insights/cli`, `@apex-log-insights/mcp` to npm
-   - Build Chrome, Edge, and Firefox extension zips (versioned filenames)
-   - Create a GitHub Release with notes pulled from CHANGELOG.md
-   - Attach extension zips/xpi to the GitHub Release as downloadable assets
-
-**Important:** The release workflow reads the matching version section from `CHANGELOG.md`
-and uses it as the GitHub Release body. If you skip updating the changelog, the release
-will have empty notes.
-
----
-
-## Adding a New Report Field
-
-1. **Extract** the raw token in `packages/core/src/certinia/LogEvents.ts` (if new).
-2. **Group/aggregate** in `packages/core/src/insightsReport.ts`.
-3. **Expose** in `packages/core/src/offlineReport.ts`.
-4. **Surface** in the viewer: update `normalize-report.js` then the relevant `render-*.js`.
-5. **Surface** in the extension: update the relevant accessor in `packages/browser-ext/app.js`.
-6. **Add a test fixture** in `fixtures/` and a test assertion.
-7. Run `pnpm test` + `pnpm typecheck` → pass.
-8. Rebuild the extension worker.
-
----
-
-## Adding a New Event Type
-
-1. Create a new class in `packages/core/src/certinia/LogEvents.ts`.
-2. Register it in `packages/core/src/certinia/LogLineMapping.ts`.
-3. Follow steps 2–8 from "Adding a New Report Field" above.
-
----
-
-## Test Commands
-
-```bash
-pnpm test                  # all tests (vitest)
-pnpm typecheck             # TypeScript check for all packages
-pnpm dev:cli               # watch mode for CLI development
-pnpm dev:ext               # watch mode for browser extension
-```
-
----
-
-## Critical Rules — Never Break These
-
-1. **`normalize-report.js` is the only place that handles format differences.**
-2. **Evidence Explorer must never truncate lines.**
-3. **No build step for the viewer.** It is zero-dependency vanilla JS ESM by design.
-4. **`apex-parser-worker.js` is a build artifact.** Never edit it directly.
-5. **The extension runtime is TS-only.** The canonical data path is
-   `packages/browser-ext/src/worker-entry.ts` → `OfflineReportV2` → `app.js`.
-6. **When renaming a report field, update all runtime readers immediately.**
-7. **Parser bugs → fix in `packages/core/src/certinia/`.
-   Report bugs → fix in `packages/core/src/insights/*.ts` or `insightsReport.ts`.
-   Display bugs → fix in the viewer or extension `app.js`.
-   Never cross layers.**
+Keep commits focused and include tests and documentation with the implementation they describe.

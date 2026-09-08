@@ -1,52 +1,52 @@
-import { parseLog, buildInsightsReport } from '@apex-log-insights/core';
-import { readLogFile } from './readLogFile.js';
-import { redactReport } from '../redact.js';
+import {
+  parseLog,
+  buildInsightsReport,
+  utf8ByteLength,
+} from "@apex-log-insights/core";
+import { resolveLogInput } from "./resolveLogInput.js";
+import { redactReport } from "../redact.js";
+import { stringifyJson } from "../jsonStringify.js";
 
 export const analyzeSoqlTool = {
-  name: 'analyze_soql',
+  name: "analyze_soql",
   description:
-    'Analyze SOQL queries in an Apex debug log. ' +
-    'Detects duplicate queries, expensive patterns, and provides row counts.',
+    "Analyze SOQL queries in an Apex debug log. " +
+    "Detects duplicate queries, expensive patterns, and provides row counts.",
   inputSchema: {
-    type: 'object' as const,
+    type: "object" as const,
     properties: {
-      logText: { type: 'string', description: 'Raw Apex debug log text.' },
-      filePath: { type: 'string', description: 'Path to an Apex debug log file.' },
+      logText: { type: "string", description: "Raw Apex debug log text." },
+      filePath: {
+        type: "string",
+        description: "Path to an Apex debug log file.",
+      },
       redact: {
-        type: 'boolean',
+        type: "boolean",
         description:
-          'Redact PII (Salesforce IDs, emails, phones, debug values) from the response. ' +
-          'Recommended when using cloud-based AI services.',
+          "Redact PII (Salesforce IDs, emails, phones, debug values) from the response. " +
+          "Recommended when using cloud-based AI services.",
       },
     },
+    oneOf: [{ required: ["logText"] }, { required: ["filePath"] }],
   },
 };
 
-export async function handleAnalyzeSoql(args: Record<string, unknown> | undefined) {
-  const logText = typeof args?.logText === 'string' ? args.logText : undefined;
-  const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;
-  const redact = typeof args?.redact === 'boolean' ? args.redact : false;
-
-  if (!logText && !filePath) {
-    throw new Error('Provide either logText or filePath.');
-  }
-
-  let text: string;
-  if (logText) {
-    text = logText;
-  } else {
-    text = await readLogFile(filePath!);
-  }
+export async function handleAnalyzeSoql(
+  args: Record<string, unknown> | undefined,
+) {
+  const redact = typeof args?.redact === "boolean" ? args.redact : false;
+  const input = await resolveLogInput(args);
+  const { text } = input;
 
   const parsed = await parseLog(text, {
-    sourceName: filePath ?? 'inline.log',
-    sourceType: filePath ? 'file' : 'clipboard',
+    sourceName: input.sourceName,
+    sourceType: input.sourceType,
     enablePhaseInference: true,
   });
 
   let report = buildInsightsReport({
-    filePath: filePath ?? 'inline.log',
-    fileBytes: new TextEncoder().encode(text).length,
+    filePath: input.sourceName,
+    fileBytes: utf8ByteLength(text),
     generatedAt: new Date().toISOString(),
     parseTimeMs: parsed.parseTimeMs,
     parserResult: parsed.parserResult,
@@ -56,12 +56,13 @@ export async function handleAnalyzeSoql(args: Record<string, unknown> | undefine
     report = redactReport(report) as typeof report;
   }
 
+  const database = report.database as Record<string, unknown> | undefined;
   const soql = {
-    database: report.database,
-    soqlPatternAnalysis: report.soqlPatternAnalysis,
+    database,
+    soqlPatterns: database?.soqlPatterns,
   };
 
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify(soql, null, 2) }],
+    content: [{ type: "text" as const, text: stringifyJson(soql) }],
   };
 }

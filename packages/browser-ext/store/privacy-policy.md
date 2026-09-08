@@ -1,79 +1,73 @@
-# Privacy Policy — Apex Log Insights
+# Privacy policy for Apex Log Insights
 
-*Last updated: March 2026*
+_Last updated: September 7, 2026_
 
----
+This policy explains what the browser extension reads, processes, stores, and transmits. Read it before loading a production Apex debug log. The goal is to make the extension's local-processing and local-storage boundaries explicit.
 
 ## Summary
 
-Apex Log Insights does not collect, transmit, or store any personal data or log content. All analysis runs locally in your browser. Nothing is sent to any server.
+Apex Log Insights parses logs inside the browser extension. The extension does not send log content, reports, preferences, or usage information to the developer, an analytics provider, or another application service.
 
----
+The extension does store preferences and may retain the active log or report in the browser profile so the analyzer can restore it after refresh. Local storage is not the same as collection by the developer, but it can still contain sensitive information on the device.
 
-## Data Collection
+## Information the extension processes
 
-Apex Log Insights collects **no data of any kind**.
+When the user opens or selects an Apex debug log, the extension may process:
 
-- No analytics or telemetry
-- No crash reporting
-- No usage tracking
-- No account or login required
-- No cookies
+- the complete raw log;
+- file name, size, and source URL;
+- parsed report fields, findings, and raw-line evidence;
+- sibling `.log` file names and timestamps when file-sidebar discovery is enabled;
+- redaction names entered by the user;
+- theme, navigation, Log Explorer, and sidebar preferences.
 
----
+Apex debug logs may contain Salesforce IDs, names, email addresses, field values, query values, endpoints, debug messages, and other business information.
 
-## Log File Processing
+## Processing and transmission
 
-When you load an Apex debug log file, it is parsed entirely within your browser using a local Web Worker. The log content:
+Parsing runs in a Web Worker packaged with the extension. Apex Log Insights does not upload the log or parsed report.
 
-- Is never uploaded to any server
-- Is never transmitted over the network
-- Is never stored beyond your current browser session (unless you explicitly save a report file to disk yourself)
-- Is processed in memory only and discarded when you close the tab
+The browser still performs its normal operations, including extension installation, updates, safe-browsing checks, and requests for a web-hosted `.log` URL. Those browser or website operations are outside Apex Log Insights log processing.
 
----
+## Local storage
 
-## Local Storage
+The extension uses `chrome.storage.local` and, where available, `chrome.storage.session`.
 
-Apex Log Insights uses `chrome.storage.local` to persist **user interface preferences only**, such as:
+Stored values can include:
 
-- Whether to open links in a new tab
-- How many context lines to show in the Log Explorer
-- PHI/PII redaction settings (enabled/disabled, name list)
+- the active raw log or report and its source URL;
+- interface and redaction preferences;
+- locally discovered sibling-log names and timestamps;
+- the active file name and sidebar state.
 
-These preferences contain no log data, no personal information, and are stored only on your local device. They are never transmitted.
+The extension retains no more than the five most recently opened log payloads. A payload may remain after its analyzer tab closes so that refreshing the tab still works. Opening additional logs removes the oldest cached payloads. Clearing extension data or uninstalling the extension removes all retained payloads.
 
----
+To remove cached logs while keeping preferences, open the extension popup and select **Clear cached logs**. Clearing all extension data through the browser or uninstalling the extension removes cached logs and preferences.
 
-## Permissions Used
+## Redaction
 
-| Permission | Purpose |
-|------------|---------|
-| `tabs` | Detects when you navigate to a `.log` URL so the extension can offer to open the analyzer. No tab content is read beyond the URL pattern. |
-| `storage` | Stores UI preferences locally on your device (see above). |
-| Host: `*://*/*.log` | Allows the content script to run on `.log` URLs. Required to intercept and analyze log files opened directly in the browser. |
-| Host: `file:///` | Allows the extension to read `.log` files opened from your local filesystem. |
+The Log Explorer can mask recognized email addresses, Salesforce IDs, phone numbers, and names supplied by the user before copying text.
 
----
+Redaction is pattern-based. It may miss sensitive text or mask text that is not sensitive. It does not alter the stored source log. Review copied content before sharing it.
 
-## Third Parties
+## Permissions
 
-Apex Log Insights does not integrate with any third-party services, APIs, or analytics platforms. No data is shared with any third party.
+| Permission    | Purpose                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `tabs`        | Recognizes `.log` tabs, opens the analyzer, and supports user-initiated local-file navigation.                          |
+| `storage`     | Stores the active analyzer payload, source information, preferences, and optional sidebar state in the browser profile. |
+| `scripting`   | Chrome and Edge only. Reads links from a local directory-listing tab after the user enables sibling-log discovery.      |
+| `*://*/*.log` | Lets the content script recognize web-hosted `.log` URLs.                                                               |
+| `file:///*`   | Lets the extension handle local `.log` URLs after the user grants browser file access.                                  |
 
----
+## Data collection and third parties
 
-## Children's Privacy
+Apex Log Insights has no account system, analytics, advertising, telemetry, or crash-reporting service. The extension does not sell or share user data.
 
-This extension is a developer tool intended for professional use. It is not directed at children and does not knowingly collect information from anyone.
+## Changes to this policy
 
----
-
-## Changes to This Policy
-
-If this policy changes, the updated version will be published with the extension update and reflected by a new "Last updated" date above.
-
----
+Update this policy when storage, permissions, network behavior, redaction, or third-party services change. The new date must match the extension submission that contains the change.
 
 ## Contact
 
-If you have questions about this privacy policy, please open an issue on the project's GitHub repository.
+Send feedback or privacy questions to [feedback@apexloginsights.com](mailto:feedback@apexloginsights.com). You can also report a bug at the [project issue tracker](https://github.com/gkolan/apex-log-insights/issues). Do not attach an unreviewed production log or other sensitive content.

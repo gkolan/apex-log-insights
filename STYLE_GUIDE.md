@@ -1,35 +1,40 @@
 # Apex Log Insights — Style Guide
 
-## Quick Reference
+Use this guide when changing TypeScript, viewer JavaScript, styles, tests, or public report fields. A conforming change belongs to the correct layer, uses stable project terms, preserves security boundaries, and includes tests that demonstrate its observable behavior.
 
-| Topic | Rule |
-|---|---|
-| Report field access | Read canonical v3 fields directly; no compatibility fallbacks |
-| Array fields from report | Always wrap in `toArray(value)` |
-| Items without line numbers | Always filter with `hasValidLineNumber()` before rendering |
-| Format normalization | Only in `normalize-report.js` — never in render modules |
-| User-visible strings in HTML | Always pass through `escapeHtml()` before `innerHTML` |
-| CSS colours | Always use `var(--token-name)`, never hard-code hex |
-| New report field | Bump schema metadata in `packages/core/src/insightsReport.ts` |
-| Renaming a report field | Remove old name and update all consumers in the same change |
-| Viewer modules | ESM only (`export`/`import`) |
-| `viewer/app.js`, `packages/browser-ext/app.js` | Plain script (IIFE-compatible) — no `import`/`export` |
-| Extension hooks | Guard with `typeof` before calling |
-| Commit prefix | `parser:`, `report:`, `viewer:`, or `extension:` |
-| Tests must pass | All tests green before any commit |
+## Quick reference
+
+| Topic                                   | Rule                                                          |
+| --------------------------------------- | ------------------------------------------------------------- |
+| Report field access                     | Read canonical v3 fields directly; no compatibility fallbacks |
+| Array fields from report                | Always wrap in `toArray(value)`                               |
+| Items without line numbers              | Always filter with `hasValidLineNumber()` before rendering    |
+| Format normalization                    | Only in `normalize-report.js` — never in render modules       |
+| User-visible strings in HTML            | Always pass through `escapeHtml()` before `innerHTML`         |
+| CSS colours                             | Always use `var(--token-name)`, never hard-code hex           |
+| New report field                        | Bump schema metadata in `packages/core/src/insightsReport.ts` |
+| Renaming a report field                 | Remove old name and update all consumers in the same change   |
+| Viewer modules                          | ESM only (`export`/`import`)                                  |
+| `viewer/app.js`, extension-only overlay | Plain script (IIFE-compatible) — no `import`/`export`         |
+| Extension hooks                         | Guard with `typeof` before calling                            |
+| Commit prefix                           | `parser:`, `report:`, `viewer:`, or `extension:`              |
+| Tests must pass                         | All tests green before any commit                             |
+| Public names and labels                 | Follow `docs/reference/terminology.md`; one term per concept  |
 
 ---
 
-## 1. Architecture Overview
+## 1. Architecture overview
 
 ```
 Layer 1 — Parser      packages/core/src/certinia/  (LogEvents.ts, ApexLogParser.ts, LogLineMapping.ts)
 Layer 2 — Report      packages/core/src/insights/*.ts  +  insightsReport.ts  +  offlineReport.ts
-Layer 3 — Viewer      viewer/modules/render-*.js
-           Extension  packages/browser-ext/app.js
+Layer 3 — Viewer      viewer/app.js + viewer/index.html + viewer/styles.css
+           Extension  generated from viewer sources + extension-only overlay
 ```
 
 Fix bugs at the lowest layer where they originate. Never patch the renderer to work around a parser gap. Never add parsing logic in `app.js`.
+
+`viewer/app.js` owns live five-view routing and hydrates the established panel shell in `viewer/index.html`. Keep shared layout and interaction behavior there so the standalone viewer, CLI, browser extension, and VS Code extension present the same hierarchy. Host adapters may add environment-specific controls but must not replace the shared report layout.
 
 ---
 
@@ -37,25 +42,27 @@ Fix bugs at the lowest layer where they originate. Never patch the renderer to w
 
 ### 2.1 File roles
 
-| File | Responsibility |
-|---|---|
-| `packages/core/src/certinia/LogEvents.ts` | One class per Salesforce event type; token extraction only |
-| `packages/core/src/certinia/LogLineMapping.ts` | Maps event-type strings to class constructors |
-| `packages/core/src/certinia/ApexLogParser.ts` | Tokenises raw log lines into an `ApexLog` tree |
-| `packages/core/src/parserCore.ts` | Wraps vendor parser; produces `NormalizedParseResult` |
-| `packages/core/src/insights/types.ts` | All shared interfaces and type aliases for the analysis layer |
-| `packages/core/src/insights/utils.ts` | Utility helpers and text parsers (`flattenEvents`, `first`, etc.) |
-| `packages/core/src/insights/parsing.ts` | Salesforce ID resolution, record graph, cumulative profiling |
-| `packages/core/src/insights/governor.ts` | Limit timeline, burn rate, heap, CPU, packages, debug quality |
-| `packages/core/src/insights/execution.ts` | Execution phases, context detection, triggers, mixed DML |
-| `packages/core/src/insights/database.ts` | SOQL patterns, savepoints, named credentials |
-| `packages/core/src/insightsReport.ts` | Entry point: imports from `insights/*`; exports `buildInsightsReport` |
-| `packages/core/src/offlineReport.ts` | Assembles the final `OfflineReportV2` shape |
-| `packages/core/src/phases.ts` | Phase IDs and definitions |
-| `packages/core/src/report.ts` | Shared types + deterministic report builder |
-| `packages/cli/src/bin.ts` | CLI entry — file I/O only, imports from `@apex-log-insights/core` |
-| `packages/browser-ext/src/worker-entry.ts` | Web Worker entry for the browser extension |
-| `packages/browser-ext/src/perf-shim.ts` | Browser polyfill for `node:perf_hooks` |
+| File                                           | Responsibility                                                        |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| `packages/core/src/certinia/LogEvents.ts`      | One class per Salesforce event type; token extraction only            |
+| `packages/core/src/certinia/LogLineMapping.ts` | Maps event-type strings to class constructors                         |
+| `packages/core/src/certinia/ApexLogParser.ts`  | Tokenises raw log lines into an `ApexLog` tree                        |
+| `packages/core/src/parserCore.ts`              | Wraps vendor parser; produces `NormalizedParseResult`                 |
+| `packages/core/src/insights/types.ts`          | All shared interfaces and type aliases for the analysis layer         |
+| `packages/core/src/insights/utils.ts`          | Utility helpers and text parsers (`flattenEvents`, `first`, etc.)     |
+| `packages/core/src/insights/parsing.ts`        | Salesforce ID resolution, record graph, cumulative profiling          |
+| `packages/core/src/insights/governor.ts`       | Limit timeline, burn rate, heap, CPU, packages, debug quality         |
+| `packages/core/src/insights/execution.ts`      | Execution phases, context detection, triggers, mixed DML              |
+| `packages/core/src/insights/database.ts`       | SOQL patterns, savepoints, named credentials                          |
+| `packages/core/src/insightsReport.ts`          | Entry point: imports from `insights/*`; exports `buildInsightsReport` |
+| `packages/core/src/offlineReport.ts`           | Assembles the final `OfflineReportV2` shape                           |
+| `packages/core/src/phases.ts`                  | Phase IDs and definitions                                             |
+| `packages/core/src/report.ts`                  | Shared types + deterministic report builder                           |
+| `packages/core/src/workerProtocol.ts`          | Host-neutral parser-worker message validation and report construction |
+| `packages/cli/src/bin.ts`                      | CLI entry — file I/O only, imports from `@apex-log-insights/core`     |
+| `packages/browser-ext/src/worker-entry.ts`     | Web Worker entry for the browser extension                            |
+| `packages/browser-ext/src/perf-shim.ts`        | Browser polyfill for `node:perf_hooks`                                |
+| `packages/vscode-ext/src/extension.ts`         | VS Code activation and extension-owned lifecycle                      |
 
 ### 2.2 Canonical field access
 
@@ -63,7 +70,9 @@ Read canonical v3 report fields directly. Do not add backward-compat field fallb
 
 ```typescript
 const limits = report?.governorLimits ?? null;
-const blocks = Array.isArray(report?.execution?.blocks) ? report.execution.blocks : [];
+const blocks = Array.isArray(report?.execution?.blocks)
+  ? report.execution.blocks
+  : [];
 ```
 
 Rule: **when renaming a report field, update producers and consumers atomically** (report builder, viewer normalization, extension path, and tests) and keep only the new canonical path.
@@ -129,7 +138,7 @@ Each Salesforce log event maps to one class. Parts are pipe-split:
 Prefer defensive extraction from canonical token positions:
 
 ```typescript
-this.ruleName = parts[4] || parts[3] || '';
+this.ruleName = parts[4] || parts[3] || "";
 ```
 
 When adding a new event type, register it in `packages/core/src/certinia/LogLineMapping.ts`:
@@ -144,26 +153,32 @@ MY_NEW_EVENT: MyNewEventLine,
 - Interfaces: `PascalCase` — `FlatEvent`, `ParsedExplainPlan`
 - Type aliases: `PascalCase` — `UnknownRecord`, `JsonValue`
 - Constants: `UPPER_SNAKE_CASE` for module-level constants, `camelCase` for local constants
+- Booleans: start with `is`, `has`, `can`, or `should` and express a positive state
+- Collections: use plural nouns; name maps `<values>By<key>` and ID sets `<concept>Ids`
+- Units: include the unit when it is not clear from the type, such as `timeoutSeconds` or `fileSizeBytes`
+- Public labels and terms: use the exact form in `docs/reference/terminology.md`
+
+Use a noun for stored information and a verb for an operation. Avoid new names containing `data`, `info`, `manager`, `helper`, `util`, `misc`, `new`, or `temp` when a specific concept is available. Existing internal names do not justify repeating a vague name in a new public API.
 
 ### 2.9 Imports
 
 Use the `.js` extension on all relative imports, even from `.ts` source files. This is required for both the Node.js ESM loader and the esbuild bundler:
 
 ```typescript
-import { buildInsightsReport } from './insightsReport.js';
-import type { JsonValue } from './report.js';
+import { buildInsightsReport } from "./insightsReport.js";
+import type { JsonValue } from "./report.js";
 ```
 
 Use `node:` prefix for all Node built-ins:
 
 ```typescript
-import { readFile, writeFile } from 'node:fs/promises';
-import { resolve, dirname } from 'node:path';
+import { readFile, writeFile } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
 ```
 
 ---
 
-## 3. Viewer Modules (`viewer/modules/*.js`)
+## 3. Viewer modules (`viewer/modules/*.js`)
 
 ### 3.1 Module format
 
@@ -183,20 +198,20 @@ Never add `require()`, CommonJS exports, or Node built-in imports. The viewer ru
 
 ### 3.2 Module responsibilities
 
-| Module | Responsibility |
-|---|---|
-| `normalize-report.js` | Only place that resolves format differences between report versions |
-| `render-triage.js` | Renders the Triage view |
-| `render-data.js` | Renders the Data (SOQL/DML/Callouts) view |
-| `render-execution.js` | Renders the Execution view |
-| `render-diagnostics.js` | Renders the Diagnostics view |
-| `render-evidence.js` | Renders the Evidence Explorer — never truncate lines |
-| `render-report.js` | Renders the Report view |
-| `render-shell.js` | Renders the app shell (nav, header) |
-| `load-report.js` | Loads the JSON report file |
-| `shared-format.js` | Formatting utilities (`escapeHtml`, `formatMs`, `num`, etc.) |
-| `shared-dom.js` | DOM utilities (`qs`, `qsa`, `createFragment`) |
-| `shared-evidence.js` | Evidence linking helpers (`evidenceButton`, `evidenceSummary`) |
+| Module                  | Responsibility                                                      |
+| ----------------------- | ------------------------------------------------------------------- |
+| `normalize-report.js`   | Only place that resolves format differences between report versions |
+| `render-triage.js`      | Renders the Triage view                                             |
+| `render-data.js`        | Renders the Data (SOQL/DML/Callouts) view                           |
+| `render-execution.js`   | Renders the Execution view                                          |
+| `render-diagnostics.js` | Renders the Diagnostics view                                        |
+| `render-evidence.js`    | Renders the Evidence Explorer — never truncate lines                |
+| `render-report.js`      | Renders the Report view                                             |
+| `render-shell.js`       | Renders the app shell (nav, header)                                 |
+| `load-report.js`        | Loads the JSON report file                                          |
+| `shared-format.js`      | Formatting utilities (`escapeHtml`, `formatMs`, `num`, etc.)        |
+| `shared-dom.js`         | DOM utilities (`qs`, `qsa`, `createFragment`)                       |
+| `shared-evidence.js`    | Evidence linking helpers (`evidenceButton`, `evidenceSummary`)      |
 
 ### 3.3 Render function signature
 
@@ -251,23 +266,23 @@ cell.innerHTML = `<span>${item.soqlText}</span>`;
 
 ### 3.6 Formatting helpers (use these, do not reimplement)
 
-| Helper | Use for |
-|---|---|
-| `escapeHtml(value)` | Any string going into `innerHTML` |
-| `formatMs(value)` | Millisecond durations |
-| `formatNsAsMs(value)` | Nanosecond durations converted to ms |
-| `formatPercent(value)` | Percentage values |
-| `formatList(arr)` | Array of strings joined to a readable list |
-| `num(value, fallback)` | Numeric values (returns `"-"` for null/undefined) |
-| `truncate(value, max)` | Long strings for display — do NOT use on Evidence lines |
-| `byNumberDesc(selector)` | Sort comparator for numeric fields |
-| `qs(root, selector)` | `root.querySelector(selector)` |
-| `qsa(root, selector)` | `Array.from(root.querySelectorAll(selector))` |
-| `createFragment(html)` | Parse HTML string into a `DocumentFragment` |
+| Helper                   | Use for                                                 |
+| ------------------------ | ------------------------------------------------------- |
+| `escapeHtml(value)`      | Any string going into `innerHTML`                       |
+| `formatMs(value)`        | Millisecond durations                                   |
+| `formatNsAsMs(value)`    | Nanosecond durations converted to ms                    |
+| `formatPercent(value)`   | Percentage values                                       |
+| `formatList(arr)`        | Array of strings joined to a readable list              |
+| `num(value, fallback)`   | Numeric values (returns `"-"` for null/undefined)       |
+| `truncate(value, max)`   | Long strings for display — do NOT use on Evidence lines |
+| `byNumberDesc(selector)` | Sort comparator for numeric fields                      |
+| `qs(root, selector)`     | `root.querySelector(selector)`                          |
+| `qsa(root, selector)`    | `Array.from(root.querySelectorAll(selector))`           |
+| `createFragment(html)`   | Parse HTML string into a `DocumentFragment`             |
 
 ---
 
-## 4. Plain Scripts (`viewer/app.js`, `packages/browser-ext/app.js`)
+## 4. Plain scripts (`viewer/app.js`, `packages/browser-ext/shared/app-extension-only.js`)
 
 ### 4.1 No ESM
 
@@ -278,7 +293,11 @@ These files are loaded as plain `<script>` tags, not `<script type="module">`. D
 The standalone viewer and the Chrome extension share `app.js`. Extension-only functions are injected by `app-extension-only.js`. Always guard calls with `typeof`:
 
 ```js
-if (typeof buildVerdict === "function" && typeof verdictPanel !== "undefined" && verdictPanel) {
+if (
+  typeof buildVerdict === "function" &&
+  typeof verdictPanel !== "undefined" &&
+  verdictPanel
+) {
   buildVerdict(report);
 }
 ```
@@ -288,9 +307,9 @@ if (typeof buildVerdict === "function" && typeof verdictPanel !== "undefined" &&
 Declare all element references at the top of the file, matching the element's `id` in camelCase:
 
 ```js
-const verdictPanel       = document.getElementById("verdictPanel");
+const verdictPanel = document.getElementById("verdictPanel");
 const governorLimitsGrid = document.getElementById("governorLimitsGrid");
-const rawSearchInput     = document.getElementById("rawSearchInput");
+const rawSearchInput = document.getElementById("rawSearchInput");
 ```
 
 ### 4.4 Accessor functions
@@ -324,7 +343,7 @@ toggleAllQueriesBtn.addEventListener("click", () => {
 
 ---
 
-## 5. CSS (`viewer/styles.css`, `packages/browser-ext/styles.css`)
+## 5. CSS (`viewer/styles.css`, `packages/browser-ext/shared/styles-extension-only.css`)
 
 ### 5.1 Design tokens
 
@@ -344,22 +363,30 @@ border-radius: 10px;
 
 Key tokens:
 
-| Token | Value | Use for |
-|---|---|---|
-| `--bg` | `#f3f4f6` | Page background |
-| `--surface` | `#ffffff` | Card / panel surface |
-| `--ink` | `#111827` | Primary text |
-| `--ink-secondary` | `#374151` | Secondary text |
-| `--muted` | `#6b7280` | Muted / helper text |
-| `--accent` | `#2563eb` | Links, buttons, highlights |
-| `--accent-hover` | `#1d4ed8` | Hover state for accent |
-| `--error-bg` / `--error-text` | | Error states |
-| `--warn-bg` / `--warn-text` | | Warning states |
-| `--ok-bg` / `--ok-text` | | Success/ok states |
-| `--panel-radius` | `10px` | Card border radius |
-| `--max-width` | `1180px` | Main content max-width |
-| `--font-sans` | system font stack | Body text |
-| `--font-mono` | monospace stack | Code, log lines |
+| Token                         | Value             | Use for                 |
+| ----------------------------- | ----------------- | ----------------------- |
+| `--bg`                        | `#f3f3f3`         | Page background         |
+| `--surface`                   | `#ffffff`         | Card / panel surface    |
+| `--ink`                       | `#202020`         | Primary text            |
+| `--ink-secondary`             | `#2e2e2e`         | Secondary text          |
+| `--muted`                     | `#5c5c5c`         | Muted / helper text     |
+| `--accent`                    | `#0066cc`         | Links and focus accents |
+| `--accent-hover`              | `#0066cc`         | Hover state for accent  |
+| `--error-bg` / `--error-text` |                   | Error states            |
+| `--warn-bg` / `--warn-text`   |                   | Warning states          |
+| `--ok-bg` / `--ok-text`       |                   | Success/ok states       |
+| `--panel-radius`              | `0.5rem`          | Card border radius      |
+| `--max-width`                 | `1180px`          | Main content max-width  |
+| `--font-sans`                 | system font stack | Body text               |
+| `--font-mono`                 | monospace stack   | Code, log lines         |
+
+Pair `--match-bg` with `--match-text` and `--button-bg` with `--button-text`.
+Use neutral surfaces and text; reserve blue for links and focus accents. Give
+fields explicit text, caret, and placeholder colors. Do not fade whole log rows:
+context and line numbers must remain readable in both themes. Let forced colors
+use the system palette. Check computed contrast in each host after changing a
+foreground, background, opacity, or theme override; see the
+[rendered accessibility checks](docs/development/testing.md#check-rendered-accessibility).
 
 ### 5.2 BEM-style class names
 
@@ -374,14 +401,22 @@ Modifier:  .verdict-card--ok       (double dash)
 Examples from the codebase:
 
 ```css
-.listCard { }
-.listTitle { }
-.statusPill { }
-.statusPill.status-error { }
-.sectionCard { }
-.sectionHead { }
-.sectionTitle { }
-.sectionCopy { }
+.listCard {
+}
+.listTitle {
+}
+.statusPill {
+}
+.statusPill.status-error {
+}
+.sectionCard {
+}
+.sectionHead {
+}
+.sectionTitle {
+}
+.sectionCopy {
+}
 ```
 
 Utility classes (single-purpose, broadly reused) are acceptable: `.hidden`, `.stack`, `.grid2`, `.actionRow`, `.smallCopy`.
@@ -417,10 +452,10 @@ Never add `style="..."` attributes to HTML. All visual state must come from CSS 
 
 ### 6.1 Framework and location
 
-Tests use vitest. Test files live in `packages/*/__tests__/` and are named `*.test.ts`.
+Tests use Vitest. Test files live in `packages/*/__tests__/`, `packages/*/src/`, and the root `__tests__/` directory and are named `*.test.ts`.
 
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 ```
 
 ### 6.2 Test coverage requirements
@@ -442,27 +477,27 @@ When adding tests, do not remove or disable existing assertions.
 
 ---
 
-## 7. Naming Conventions
+## 7. Naming conventions
 
 ### 7.1 Functions
 
-| Context | Pattern | Example |
-|---|---|---|
-| Report normalizers | `normalize` + noun | `normalizeCallouts()`, `normalizeSavepoints()` |
-| Report collectors | `collect` + noun | `collectPhases()`, `collectIssueState()` |
-| View renderers | `render` + noun + `View` | `renderTriageView()`, `renderDataView()` |
-| Extension accessors | descriptive, no prefix | `getReportExecution()`, `buildVerdict()` |
-| Format helpers | `format` + noun | `formatMs()`, `formatPercent()` |
-| Boolean predicates | `has` / `is` + noun | `hasValidLineNumber()`, `isExtensionContext()` |
+| Context             | Pattern                  | Example                                        |
+| ------------------- | ------------------------ | ---------------------------------------------- |
+| Report normalizers  | `normalize` + noun       | `normalizeCallouts()`, `normalizeSavepoints()` |
+| Report collectors   | `collect` + noun         | `collectPhases()`, `collectIssueState()`       |
+| View renderers      | `render` + noun + `View` | `renderTriageView()`, `renderDataView()`       |
+| Extension accessors | descriptive, no prefix   | `getReportExecution()`, `buildVerdict()`       |
+| Format helpers      | `format` + noun          | `formatMs()`, `formatPercent()`                |
+| Boolean predicates  | `has` / `is` + noun      | `hasValidLineNumber()`, `isExtensionContext()` |
 
 ### 7.2 Files
 
-| Layer | Pattern | Example |
-|---|---|---|
-| Viewer render modules | `render-` + kebab-noun | `render-data.js`, `render-diagnostics.js` |
-| Viewer shared utilities | `shared-` + kebab-noun | `shared-format.js`, `shared-dom.js` |
-| TypeScript source | camelCase | `insightsReport.ts`, `offlineReport.ts` |
-| Test files | `*.test.ts` | `viewer-modules.test.ts` |
+| Layer                   | Pattern                | Example                                   |
+| ----------------------- | ---------------------- | ----------------------------------------- |
+| Viewer render modules   | `render-` + kebab-noun | `render-data.js`, `render-diagnostics.js` |
+| Viewer shared utilities | `shared-` + kebab-noun | `shared-format.js`, `shared-dom.js`       |
+| TypeScript source       | camelCase              | `insightsReport.ts`, `offlineReport.ts`   |
+| Test files              | `*.test.ts`            | `viewer-modules.test.ts`                  |
 
 ### 7.3 Report fields
 
@@ -483,7 +518,7 @@ When a field is renamed, remove the old field and update all reads to the new ca
 
 ---
 
-## 8. Git and Versioning
+## 8. Git and versioning
 
 ### 8.1 Commit message prefix
 
@@ -516,7 +551,7 @@ pnpm build
 
 ---
 
-## 9. Architecture Invariants
+## 9. Architecture invariants
 
 These rules encode decisions that have caused regressions when broken. They are non-negotiable.
 
@@ -540,7 +575,7 @@ These rules encode decisions that have caused regressions when broken. They are 
 
 ---
 
-## 10. Adding a New Report Field — Checklist
+## 10. Checklist for adding a report field
 
 1. Extract the raw token in `packages/core/src/certinia/LogEvents.ts` (if it is a new event type, register it in `LogLineMapping.ts`).
 2. Group / aggregate in `packages/core/src/insightsReport.ts`.
@@ -548,7 +583,7 @@ These rules encode decisions that have caused regressions when broken. They are 
 4. Bump schema metadata in `packages/core/src/insightsReport.ts`.
 5. Add a normalizer in `viewer/modules/normalize-report.js`; wire it into `normalizeData()` or `normalizeDiagnostics()`.
 6. Render in the relevant `render-*.js` module.
-7. Surface in the extension: update the relevant accessor in `packages/browser-ext/app.js`.
+7. Surface shared UI through viewer sources; use `packages/browser-ext/shared/app-extension-only.js` only for extension-only behavior.
 8. Add a test fixture in `fixtures/` and a test assertion.
 9. Run `pnpm test` and `pnpm typecheck` — all must pass.
 10. Rebuild the extension worker: `pnpm --filter @apex-log-insights/browser-ext build:worker`.

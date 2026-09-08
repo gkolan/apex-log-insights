@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a new capability or a change to an existing one.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the investigation you cannot finish today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should Apex Log Insights do instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface does this affect?
+      multiple: true
+      options:
+        - Browser extension
+        - VS Code extension
+        - CLI
+        - Core library
+        - MCP server
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting log evidence
+      description: Which debug events would support this? Leave blank if it is not log-driven.

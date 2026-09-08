@@ -24,7 +24,9 @@ function setIcon(state, tabId) {
   const path = ICON_PATHS[state] || ICON_PATHS.idle;
   const params = { path };
   if (tabId != null) params.tabId = tabId;
-  chrome.action.setIcon(params).catch((err) => { console.warn('[apex-log-insights]', err.message ?? err); });
+  chrome.action.setIcon(params).catch((err) => {
+    console.warn("[apex-log-insights]", err.message ?? err);
+  });
 }
 
 /* ─── Check if file:// access is permitted ────────────────────────────────── */
@@ -37,7 +39,7 @@ function isFileAccessAllowed() {
         return;
       }
       let timeoutId;
-      const cleanup = (result) => {
+      const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId);
       };
       timeoutId = setTimeout(() => {
@@ -91,7 +93,9 @@ chrome.runtime.onInstalled.addListener((details) => {
   updateGlobalIcon();
   if (details?.reason !== "install") return;
   const url = chrome.runtime.getURL("welcome.html");
-  chrome.tabs.create({ url }).catch((err) => { console.warn('[apex-log-insights]', err.message ?? err); });
+  chrome.tabs.create({ url }).catch((err) => {
+    console.warn("[apex-log-insights]", err.message ?? err);
+  });
 });
 
 chrome.runtime.onStartup.addListener(() => {
@@ -126,7 +130,7 @@ async function scanDirectoryViaTab(dirUrl) {
   try {
     const tab = await chrome.tabs.create({ url: dirUrl, active: false });
     tabId = tab.id;
-  } catch (err) {
+  } catch {
     // scan tab creation failed — silently return empty
     return [];
   }
@@ -165,7 +169,8 @@ async function scanDirectoryViaTab(dirUrl) {
           if (!link) return;
           // Firefox wraps filenames in a nested table — get just the text
           const name = (link.textContent || "").replace(/\s+/g, " ").trim();
-          if (!name || name === ".." || name === "." || name.endsWith("/")) return;
+          if (!name || name === ".." || name === "." || name.endsWith("/"))
+            return;
           if (!name.toLowerCase().endsWith(".log")) return;
           // Skip directory entries (Firefox uses .dir class)
           if (row.classList.contains("dir")) return;
@@ -185,13 +190,17 @@ async function scanDirectoryViaTab(dirUrl) {
             const sortable = cell.getAttribute("sortable-data");
             if (sortable && !modifiedAt) {
               const parsed = Date.parse(sortable);
-              if (!isNaN(parsed)) { modifiedAt = parsed; continue; }
+              if (!isNaN(parsed)) {
+                modifiedAt = parsed;
+                continue;
+              }
             }
             // Fallback: try parsing cell text as a date
             const text = (cell.textContent || "").trim();
             if (!modifiedAt && text && /\d/.test(text)) {
               const parsed = Date.parse(text);
-              if (!isNaN(parsed) && parsed > 946684800000) { // after year 2000
+              if (!isNaN(parsed) && parsed > 946684800000) {
+                // after year 2000
                 modifiedAt = parsed;
               }
             }
@@ -203,7 +212,8 @@ async function scanDirectoryViaTab(dirUrl) {
         if (results.length === 0) {
           document.querySelectorAll("a").forEach((a) => {
             const name = (a.textContent || "").trim();
-            if (!name || name === ".." || name === "." || name.endsWith("/")) return;
+            if (!name || name === ".." || name === "." || name.endsWith("/"))
+              return;
             if (!name.toLowerCase().endsWith(".log")) return;
             results.push({ name, modifiedAt: null });
           });
@@ -213,12 +223,16 @@ async function scanDirectoryViaTab(dirUrl) {
       },
     });
     files = injection?.[0]?.result || [];
-  } catch (err) {
+  } catch {
     // executeScript failed — tab may have closed or permission denied
   }
 
   // Close the scan tab immediately
-  try { await chrome.tabs.remove(tabId); } catch { /* ignore */ }
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch {
+    /* ignore */
+  }
 
   // Sort by last modified descending (newest first), nulls last
   files.sort((a, b) => {
@@ -241,7 +255,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then((files) => {
       sendResponse({ ok: true, files });
     })
-    .catch((err) => {
+    .catch(() => {
       sendResponse({ ok: false, files: [] });
     });
   return true; // keep channel open for async response

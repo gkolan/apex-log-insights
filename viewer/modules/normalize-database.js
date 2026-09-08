@@ -1,7 +1,7 @@
 // Database-related normalization (SOQL, DML, callouts, named credentials)
 
 import { byNumberDesc, truncate } from "./shared-format.js";
-import { toArray, first } from "./normalize-helpers.js";
+import { toArray, first, numberOrNull } from "./normalize-helpers.js";
 import { addRawLogLineNumber } from "./normalize-evidence-mapping.js";
 
 export function normalizeSoqlPatterns(report) {
@@ -184,6 +184,69 @@ export function normalizeValidationBlocks(report) {
     });
 }
 
+export function normalizeAutomationBlocks(report) {
+  const normalize = (kind, item, index) => ({
+    id: first(item?.eventId, item?.id, `${kind}-${index + 1}`),
+    kind,
+    label: first(item?.label, kind === "flow" ? "Flow" : "Workflow"),
+    namespace: first(item?.namespace, "default"),
+    durationMs:
+      Number.isFinite(Number(item?.startNs)) && Number.isFinite(Number(item?.endNs))
+        ? Math.max(0, (Number(item.endNs) - Number(item.startNs)) / 1_000_000)
+        : null,
+    eventCount: Number(first(item?.totals?.eventCount, toArray(item?.steps).length, 0) || 0),
+    errorCount: Number(first(item?.totals?.errorCount, 0) || 0),
+    steps: toArray(item?.steps).map((step, stepIndex) => ({
+      id: `${kind}-${index + 1}-step-${stepIndex + 1}`,
+      type: first(step?.type, "EVENT"),
+      text: first(step?.text, null),
+      lineNumber: numberOrNull(step?.lineNumber),
+      timestampNs: numberOrNull(step?.timestampNs),
+    })),
+  });
+  return [
+    ...toArray(report?.trace?.flowBlocks).map((item, index) =>
+      normalize("flow", item, index),
+    ),
+    ...toArray(report?.trace?.workflowBlocks).map((item, index) =>
+      normalize("workflow", item, index),
+    ),
+  ].sort(byNumberDesc((item) => item?.durationMs));
+}
+
+export function normalizeRecordGraph(report) {
+  return toArray(report?.recordGraph).map((group, groupIndex) => ({
+    id: first(group?.sObjectType, `record-group-${groupIndex + 1}`),
+    sObjectType: first(group?.sObjectType, "Unknown"),
+    keyPrefix: first(group?.keyPrefix, null),
+    recordCount: Number(first(group?.recordCount, toArray(group?.records).length, 0) || 0),
+    recordsTruncated: Boolean(group?.recordsTruncated),
+    recordLimit: numberOrNull(group?.recordLimit),
+    records: toArray(group?.records).map((record, recordIndex) => ({
+      id: first(record?.id, `record-${groupIndex + 1}-${recordIndex + 1}`),
+      sObjectType: first(record?.sObjectType, group?.sObjectType, "Unknown"),
+      fields: toArray(record?.fields),
+      relationships: toArray(record?.relationships),
+      provenance: toArray(record?.provenance),
+    })),
+  }));
+}
+
+export function normalizeLimitTrajectory(report) {
+  return toArray(report?.governorBurnRate?.trajectory).map((point, index) => ({
+    id: `limit-point-${index + 1}`,
+    timestampNs: numberOrNull(point?.timestampNs),
+    namespace: first(point?.namespace, "default"),
+    soqlUsed: numberOrNull(point?.soqlUsed),
+    soqlRowsUsed: numberOrNull(point?.soqlRowsUsed),
+    dmlUsed: numberOrNull(point?.dmlUsed),
+    dmlRowsUsed: numberOrNull(point?.dmlRowsUsed),
+    cpuUsed: numberOrNull(point?.cpuUsed),
+    heapUsed: numberOrNull(point?.heapUsed),
+    calloutsUsed: numberOrNull(point?.calloutsUsed),
+  }));
+}
+
 export function normalizeLimits(report) {
   return report?.governorLimits?.current?.defaultNamespace || {};
 }
@@ -205,8 +268,8 @@ export function normalizeData(report, rawLineMap) {
       id: rawId,
       label: truncate(first(item?.queryName, item?.query, item?.summary, "Query"), 110),
       fullQuery: first(item?.query, item?.queryName, item?.summary, ""),
-      rows: Number(first(item?.rows, 0) || 0),
-      durationMs: Number(first(item?.durationMs, 0) || 0),
+      rows: numberOrNull(item?.rows),
+      durationMs: numberOrNull(item?.durationMs),
       explain: item?.explain || null,
       evidence: addRawLogLineNumber(item?.evidence || {}, rawLineMap),
       patternId: soqlIdToPatternId.get(rawId) ?? soqlIdToPatternId.get(item?.id) ?? null,
@@ -219,8 +282,8 @@ export function normalizeData(report, rawLineMap) {
       id: first(item?.id, `dml-${index + 1}`),
       operation: first(item?.operation, item?.dmlOp, "DML"),
       sObject: first(item?.sObject, item?.object, "Unknown"),
-      rows: Number(first(item?.rows, 0) || 0),
-      durationMs: Number(first(item?.durationMs, 0) || 0),
+      rows: numberOrNull(item?.rows),
+      durationMs: numberOrNull(item?.durationMs),
       evidence: addRawLogLineNumber(item?.evidence || {}, rawLineMap),
     }));
 
@@ -231,6 +294,9 @@ export function normalizeData(report, rawLineMap) {
   const callouts = normalizeCallouts(report, rawLineMap);
   const namedCredentials = normalizeNamedCredentials(report, rawLineMap);
   const integrationOperations = normalizeIntegrationOperations(report, rawLineMap);
+  const automation = normalizeAutomationBlocks(report);
+  const recordGraph = normalizeRecordGraph(report);
+  const limitTrajectory = normalizeLimitTrajectory(report);
   return {
     soql,
     soqlTotalCount: soql.length,
@@ -248,8 +314,20 @@ export function normalizeData(report, rawLineMap) {
     phaseHeadroomTotalCount: phaseHeadroom.length,
     validationBlocks,
     validationBlockTotalCount: validationBlocks.length,
+    automation,
+    automationTotalCount: automation.length,
+    recordGraph,
+    recordTotalCount: recordGraph.reduce((sum, group) => sum + group.recordCount, 0),
+    limitTrajectory,
     soqlPatterns,
-    soqlPatternTotalCount: soqlPatterns.length,
+    soqlPatternTotalCount: Number.isFinite(
+      Number(report?.database?.soqlPatternsMeta?.totalCount),
+    )
+      ? Number(report.database.soqlPatternsMeta.totalCount)
+      : soqlPatterns.length,
+    soqlPatternsTruncated: Boolean(
+      report?.database?.soqlPatternsMeta?.truncated,
+    ),
     savepoints,
     savepointTotalCount: savepoints.length,
     burnRate: report?.governorBurnRate || null,

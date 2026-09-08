@@ -1,0 +1,72 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    ".claude/**",
+    ".vscode-test/**",
+    "**/dist/**",
+    "eslint-security.config.mjs",
+    "packages/browser-ext/src/perf-shim.ts",
+    "packages/cli/src/perf-shim.ts",
+    "packages/browser-ext/shared/app.js",
+    "packages/browser-ext/shared/content/apex-parser-worker.js",
+    "viewer/apex-parser-worker.js",
+    "viewer/modules/render-report.js",
+    "viewer/modules/render-shell.js",
+    "viewer/modules/shared-dom.js",
+    "viewer/modules/sidebar.js"
+  ],
+  "ignoreDependencies": [
+    "@arethetypeswrong/cli",
+    "@secretlint/secretlint-rule-preset-recommend",
+    "@vitest/coverage-v8",
+    "lint-staged",
+    "madge"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/**/*.{ts,mjs}",
+        "__tests__/**/*.test.ts",
+        "viewer/app.js",
+        "viewer/sw.js",
+        "viewer/register-sw.js",
+        "eslint.config.mjs",
+        "eslint-security.config.mjs",
+        "vitest.config.mts"
+      ],
+      "project": [
+        "scripts/**/*.{ts,mjs}",
+        "__tests__/**/*.ts",
+        "viewer/**/*.js"
+      ]
+    },
+    "packages/core": {
+      "entry": ["src/index.ts", "__tests__/**/*.test.ts"],
+      "project": ["src/**/*.ts", "__tests__/**/*.ts"]
+    },
+    "packages/cli": {
+      "entry": ["src/bin.ts", "src/worker-entry.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/mcp": {
+      "entry": ["src/server.ts", "__tests__/**/*.test.ts", "tsup.config.ts"],
+      "project": ["src/**/*.ts", "__tests__/**/*.ts", "tsup.config.ts"]
+    },
+    "packages/browser-ext": {
+      "entry": [
+        "src/worker-entry.ts",
+        "shared/app-extension-only.js",
+        "shared/background.js",
+        "shared/popup.js",
+        "shared/welcome.js",
+        "shared/content/content-launcher.js"
+      ],
+      "project": ["src/**/*.ts", "shared/**/*.js"]
+    },
+    "packages/vscode-ext": {
+      "entry": ["src/extension.ts", "src/test/suite.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreUnresolved": ["./parser-worker.cjs"]
+    }
+  }
+}

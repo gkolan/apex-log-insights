@@ -1,124 +1,123 @@
-# Store Screenshots Guide — Apex Log Insights
+# Store screenshot guide
 
-Chrome Web Store requires **1–5 screenshots**. Recommended dimensions: **1280×800** or **640×400** pixels. PNG or JPEG.
+Use this page to create store images that show a real user task without exposing production data. Start with the setup screen, then show how a warning moves from Triage Summary to its supporting line in Log Explorer.
 
-The store also supports a **promotional tile** (440×280) and an optional **marquee banner** (1400×560).
+Chrome accepts one to five screenshots at 1280 × 800 or 640 × 400 pixels in PNG or JPEG format. Check the current store requirements before submission because dimensions can change.
 
----
+## Prepare the source
 
-## Recommended Screenshot Set (5 images)
+Use the tracked synthetic fixture:
 
-Take these in order — they tell a complete story from "open a log" to "find the root cause".
-
----
-
-### Screenshot 1 — Triage View (Hero shot)
-
-**What to capture:** The Triage tab fully loaded with a log that has at least one warning (N+1 SOQL or governor limit near threshold). Show the verdict badge, the key metrics grid, and the N+1 banner if present.
-
-**Suggested caption:**
-> Instant triage — verdict, key metrics, and N+1 SOQL detection in one view.
-
-**Tips:**
-- Use a log with a WARNING or CRITICAL verdict so the badge color pops
-- Make sure the N+1 SOQL banner is visible if the log has one
-- Use light theme for screenshots (better contrast on the store's white background)
-- Crop to 1280×800, hiding the browser chrome if possible (use a frameless window or crop)
-
----
-
-### Screenshot 2 — Execution View
-
-**What to capture:** The Execution tab showing the 20-phase timeline with at least 3–4 phases visible, each with their governor limit breakdown. Ideally show a trigger phase with DML + SOQL sub-items visible.
-
-**Suggested caption:**
-> Salesforce's 20-phase execution lifecycle — see exactly which phase consumed which governor limits.
-
-**Tips:**
-- Expand one or two phases to show sub-items (query rows, CPU time, heap)
-- If the log has a trigger cascade, include that section
-- The execution chain / call stack is a good secondary element to show
-
----
-
-### Screenshot 3 — Data & Limits View
-
-**What to capture:** The Data tab showing the SOQL queries table (with duration column) and DML operations table. Bonus if HTTP callouts or Named Credentials are also visible.
-
-**Suggested caption:**
-> Every SOQL query, DML operation, and HTTP callout — ranked, structured, and linked to the raw log.
-
-**Tips:**
-- Sort/rank by duration to show the slowest queries at the top
-- Expand the "All queries" section if present to show more rows
-- Show at least 5–8 rows in the SOQL table for visual richness
-
----
-
-### Screenshot 4 — Log Explorer (Evidence view) with a search active
-
-**What to capture:** The Evidence/Log Explorer tab with a search term typed in (e.g., "SOQL" or "EXCEPTION") and several highlighted matches visible. Show the context line controls sidebar.
-
-**Suggested caption:**
-> Full raw log with search, context lines, and one-click navigation to any event.
-
-**Tips:**
-- Use a search that returns 5–10 visible highlighted results
-- Show the context line count controls (set to 5 or 10 lines for visual interest)
-- Show the "Copy highlighted lines" button
-- If possible, show an evidence pointer panel open (linking a query back to its line)
-
----
-
-### Screenshot 5 — Diagnostics View
-
-**What to capture:** The Diagnostics tab showing the debug level quality score card, execution context detection (e.g., "Synchronous Trigger"), and at least one warning card (mixed DML or recursive trigger) if the log has one.
-
-**Suggested caption:**
-> Diagnostics — execution context, debug level quality, trigger cascade analysis, and warning detection.
-
-**Tips:**
-- A log with a low debug quality score or a warning makes this screen more compelling
-- Show the managed package overhead section if the log has managed packages
-- The execution context chip (e.g., "SYNCHRONOUS TRIGGER") is a strong visual element
-
----
-
-## Promotional Tile (440×280) — Optional but recommended
-
-Use the Triage view cropped to the verdict badge + top metrics grid only. This is the thumbnail-scale image shown in category browsing.
-
-**Text overlay to add (in an image editor):**
-```
-Apex Log Insights
-Free offline toolkit for Apex debug logs
+```text
+fixtures/webstore-demo-opportunity-trigger.log
 ```
 
----
+Do not use a production log. Before capture, check the visible file name, user information, Salesforce IDs, class names, endpoints, query values, and raw lines. Replace the fixture if any value could be mistaken for customer or employee data.
 
-## Marquee Banner (1400×560) — Optional
+Build and load the Chrome extension as described in the [browser extension guide](../../../docs/development/browser-extension.md#load-the-extension-for-development).
 
-A wider hero shot of the full analyzer UI — Triage view or Execution view at full width, with text overlay:
+## Capture sequence
 
-```
-Apex Log Insights
-Turn raw Apex debug logs into actionable insights — free, offline, instant.
-```
+The current set is in [assets/images](../../../assets/images/README.md). Use a 1280 × 800 viewport. Capture Setup in its default Light theme and select **Dark mode** for the report views. The main README shows `setup-verification-crop.png` (the card-cropped copy of `1.png`) first, followed by `light/triage-summary.png` and `2.png`. Use the five-image upload order below; retain Diagnostics as an alternate image.
 
----
+| Upload order | Screen          | File    |
+| ------------ | --------------- | ------- |
+| 1            | Setup           | `1.png` |
+| 2            | Triage Summary  | `3.png` |
+| 3            | Execution Story | `2.png` |
+| 4            | Data & Limits   | `6.png` |
+| 5            | Log Explorer    | `5.png` |
+| Alternate    | Diagnostics     | `4.png` |
 
-## Checklist before uploading
+## Complete theme coverage
 
-- [ ] Screenshots are exactly 1280×800 or 640×400 (Chrome Web Store will reject other sizes)
-- [ ] No browser chrome visible (use full-screen or crop)
-- [ ] Light theme used (better legibility on the store's white background)
-- [ ] Real log data used (not placeholder/empty state)
-- [ ] Log contains enough data to make tables and views look populated
-- [ ] Captions are ready to paste into the store's "Caption" field for each screenshot
-- [ ] At least 1 screenshot uploaded (up to 5 recommended)
+The [image inventory](../../../assets/images/README.md#light-and-night-pairs) links every Light and Night pair under `assets/images/light/` and `assets/images/dark/`. Capture both setup states, the analyzer start screen, all five report views, and the actual toolbar popup with file access required and enabled. Expand redaction options for an additional popup capture. Capture the top and bottom of scrolling popups separately at their native size so all controls remain visible.
 
----
+The log-page launcher stays white in either report theme; keep its shared image as `log-launcher.png`. Keep the populated report images and the default white setup screen as the recommended store selection. The analyzer start screen and native popup images are supplementary UI references.
 
-## Sample log to use for screenshots
+### 1. Setup
 
-`logs/webstore-demo-opportunity-trigger.log` is already in the repo and was likely chosen for this purpose. Use it as the primary screenshot source if it produces a WARNING or CRITICAL verdict with visible SOQL/DML data.
+In a temporary Chrome or Edge profile, disable **Allow access to file URLs**, then open the extension's setup page. Show the white setup card, **Open extension settings** button, and file-access instructions. Restore the permission before capturing report views.
+
+Capture the completed state as `setup-complete.png` after enabling access. At the same viewport size, verify that its card dimensions match the verification screen and that both show the outer border and section divider. Keep `1.png` first in the store listing; the completion image is a supplementary asset.
+
+Caption:
+
+> Allow access to local debug logs, then open a log to begin analysis.
+
+### 2. Triage Summary
+
+Show the outcome, top metrics, and at least one evidence-backed finding. Collapse the Scope IDs groups to keep the metrics visible.
+
+Caption:
+
+> Start with the transaction status, resource use, and findings that need attention.
+
+### 3. Execution Story
+
+Show the observed event table with **All events** selected. Keep event types, durations, source lines, log-line links, and the displayed-row limit visible.
+
+Caption:
+
+> Follow observed events in order, with recorded durations and links to raw log lines.
+
+### 4. Data & Limits
+
+Show SOQL and DML rows with duration and evidence controls. Include callouts only when the fixture contains them.
+
+Caption:
+
+> Review DML operations and SOQL queries with row counts, durations, and log-line links.
+
+### 5. Log Explorer
+
+Search for `Read timed out` and set **Context lines** to `2`. Confirm 20 matches, then capture the highlighted lines and their line numbers.
+
+Caption:
+
+> Verify a finding against the exact raw log line.
+
+### Alternate: Diagnostics
+
+Show execution context and its confidence, structural-warning status, and the **What is suspicious** table.
+
+Caption:
+
+> Check what the log supports, what looks suspicious, and what could not be determined.
+
+## Image rules
+
+- Use the exact current view labels from `docs/reference/terminology.md`.
+- Capture the submitted build, not a development mock-up.
+- Do not add a feature in a caption unless the screenshot shows it.
+- Keep browser controls and unrelated tabs out of the image.
+- Capture both themes for the complete UI inventory. Use the default Light setup screen and Night report views for the recommended store selection.
+- Keep text large enough to read at the store's displayed size.
+- Do not add decorative overlays that hide status, evidence, or limitations.
+- Do not use placeholder or empty-state content.
+
+## Optional promotional images
+
+If the store still accepts them, use the current required dimensions shown in the developer dashboard.
+
+- Small promotional tile: crop Triage Summary to the status and top metrics.
+- Marquee image: show Triage Summary or Execution Story without adding unsupported claims.
+
+Suggested title:
+
+> Apex Log Insights
+
+Suggested subtitle:
+
+> Trace Apex log findings to the raw lines that support them.
+
+## Final check
+
+Confirm that all images:
+
+- use the synthetic fixture;
+- match the submitted version;
+- contain no sensitive values;
+- show distinct tasks rather than five similar screens;
+- use captions that describe visible behavior;
+- meet the store's current file, count, and dimension requirements.

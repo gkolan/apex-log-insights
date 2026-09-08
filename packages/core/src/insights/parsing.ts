@@ -6,12 +6,9 @@
 export {
   inferSObjectFromVarName,
   buildDynamicPrefixMap,
-} from './parsing-prefix.js';
+} from "./parsing-prefix.js";
 
-export {
-  RecordGraphResult,
-  extractRecordGraph,
-} from './parsing-records.js';
+export { RecordGraphResult, extractRecordGraph } from "./parsing-records.js";
 
 export {
   extractTargetObject,
@@ -19,4 +16,4 @@ export {
   parseVariableAssignment,
   parseVariableScope,
   collectCumulativeProfilingSections,
-} from './parsing-variables.js';
+} from "./parsing-variables.js";

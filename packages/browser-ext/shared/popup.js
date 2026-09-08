@@ -22,6 +22,7 @@ const DEFAULT_LOG_EXPLORER_SETTINGS = {
 };
 
 const openWelcomeBtn = document.getElementById("openWelcomeBtn");
+const openAnalyzerBtn = document.getElementById("openAnalyzerBtn");
 const redactEnabled = document.getElementById("redactEnabled");
 const redactOptions = document.getElementById("redactOptions");
 const redactEmail = document.getElementById("redactEmail");
@@ -34,11 +35,23 @@ const openLinksInNewTab = document.getElementById("openLinksInNewTab");
 const sidebarEnabled = document.getElementById("sidebarEnabled");
 const preferencesPanel = document.getElementById("preferencesPanel");
 const fileAccessBanner = document.getElementById("fileAccessBanner");
-const openFileAccessSettingsBtn = document.getElementById("openFileAccessSettingsBtn");
-const dismissFileAccessBannerBtn = document.getElementById("dismissFileAccessBannerBtn");
+const openFileAccessSettingsBtn = document.getElementById(
+  "openFileAccessSettingsBtn",
+);
+const dismissFileAccessBannerBtn = document.getElementById(
+  "dismissFileAccessBannerBtn",
+);
 const fileAccessStatusBadge = document.getElementById("fileAccessStatusBadge");
+const clearCachedLogsBtn = document.getElementById("clearCachedLogsBtn");
+const clearCachedLogsStatus = document.getElementById("clearCachedLogsStatus");
 
 let fileAccessBannerDismissed = false;
+
+function isCachedLogPayloadKey(key) {
+  return /^apex-(?:log-\d+(?:-[a-z0-9]{6})?|new-tab-state-\d+(?:-[a-z0-9]{8})?)$/.test(
+    key,
+  );
+}
 
 function getFileSchemeAccessAllowed() {
   return new Promise((resolve) => {
@@ -48,7 +61,7 @@ function getFileSchemeAccessAllowed() {
         return;
       }
       let timeoutId;
-      const cleanup = (result) => {
+      const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId);
       };
       timeoutId = setTimeout(() => {
@@ -80,7 +93,10 @@ function resolveTheme(preference) {
   if (preference === "dark") return "dark";
   // "system" or default: resolve based on media query
   try {
-    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+    if (
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+    ) {
       return "light";
     }
   } catch {
@@ -108,12 +124,24 @@ function syncThemeButtons(preference) {
   const themeDarkBtn = document.getElementById("themeDarkBtn");
 
   [themeSystemBtn, themeLightBtn, themeDarkBtn].forEach((btn) => {
-    if (btn) btn.classList.remove("active");
+    if (btn) {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-pressed", "false");
+    }
   });
 
-  if (preference === "light" && themeLightBtn) themeLightBtn.classList.add("active");
-  else if (preference === "dark" && themeDarkBtn) themeDarkBtn.classList.add("active");
+  if (preference === "light" && themeLightBtn)
+    themeLightBtn.classList.add("active");
+  else if (preference === "dark" && themeDarkBtn)
+    themeDarkBtn.classList.add("active");
   else if (themeSystemBtn) themeSystemBtn.classList.add("active");
+  const selected =
+    preference === "light"
+      ? themeLightBtn
+      : preference === "dark"
+        ? themeDarkBtn
+        : themeSystemBtn;
+  selected?.setAttribute("aria-pressed", "true");
 }
 
 function setFileAccessBannerVisible(visible) {
@@ -170,6 +198,13 @@ if (openWelcomeBtn) {
   });
 }
 
+if (openAnalyzerBtn) {
+  openAnalyzerBtn.addEventListener("click", async () => {
+    await chrome.tabs.create({ url: chrome.runtime.getURL("app.html") });
+    window.close();
+  });
+}
+
 if (openFileAccessSettingsBtn) {
   openFileAccessSettingsBtn.addEventListener("click", async () => {
     if (isFirefox) {
@@ -177,7 +212,9 @@ if (openFileAccessSettingsBtn) {
         await chrome.tabs.create({ url: "about:addons" });
       } catch {
         // about:addons blocked — guide user manually
-        window.alert("Open about:addons in your address bar, then click Apex Log Insights to manage permissions.");
+        window.alert(
+          "Open about:addons in your address bar, then click Apex Log Insights to manage permissions.",
+        );
         return;
       }
       window.close();
@@ -206,13 +243,41 @@ if (dismissFileAccessBannerBtn) {
   });
 }
 
+if (clearCachedLogsBtn) {
+  clearCachedLogsBtn.addEventListener("click", async () => {
+    clearCachedLogsBtn.disabled = true;
+    if (clearCachedLogsStatus) clearCachedLogsStatus.textContent = "Clearing…";
+    try {
+      const stored = await chrome.storage.local.get(null);
+      const cachedKeys = Object.keys(stored).filter(isCachedLogPayloadKey);
+      if (cachedKeys.length > 0) await chrome.storage.local.remove(cachedKeys);
+      if (clearCachedLogsStatus) {
+        clearCachedLogsStatus.textContent = cachedKeys.length
+          ? `Removed ${cachedKeys.length} cached log${cachedKeys.length === 1 ? "" : "s"}.`
+          : "No cached logs were stored.";
+      }
+    } catch (error) {
+      if (clearCachedLogsStatus) {
+        clearCachedLogsStatus.textContent =
+          error instanceof Error
+            ? error.message
+            : "Could not clear cached logs.";
+      }
+    } finally {
+      clearCachedLogsBtn.disabled = false;
+    }
+  });
+}
+
 // ─── Redaction settings ───────────────────────────────────────────────────────
 
 async function loadSettings() {
   try {
     const stored = await chrome.storage.local.get(STORAGE_KEY);
     const s = stored?.[STORAGE_KEY];
-    return s && typeof s === "object" ? { ...DEFAULT_REDACTION_SETTINGS, ...s } : { ...DEFAULT_REDACTION_SETTINGS };
+    return s && typeof s === "object"
+      ? { ...DEFAULT_REDACTION_SETTINGS, ...s }
+      : { ...DEFAULT_REDACTION_SETTINGS };
   } catch {
     return { ...DEFAULT_REDACTION_SETTINGS };
   }
@@ -224,7 +289,9 @@ async function saveSettings(settings) {
 
 function sanitizeContextRows(value) {
   const n = Number(value);
-  return RAW_CONTEXT_OPTIONS.includes(n) ? n : DEFAULT_LOG_EXPLORER_SETTINGS.contextRows;
+  return RAW_CONTEXT_OPTIONS.includes(n)
+    ? n
+    : DEFAULT_LOG_EXPLORER_SETTINGS.contextRows;
 }
 
 async function loadLogExplorerSettings() {
@@ -267,7 +334,10 @@ function readLogExplorerSettingsFromUi() {
 
 function readRedactionSettingsFromUi() {
   const nameLines = redactNameList?.value ?? "";
-  const nameList = nameLines.split("\n").map((n) => n.trim()).filter(Boolean);
+  const nameList = nameLines
+    .split("\n")
+    .map((n) => n.trim())
+    .filter(Boolean);
   return {
     enabled: redactEnabled?.checked ?? false,
     email: redactEmail?.checked ?? true,
@@ -303,8 +373,10 @@ getPreferredTheme().then((preference) => {
 });
 loadSettings().then(applySettingsToUi);
 loadLogExplorerSettings().then((settings) => {
-  if (defaultContextRows) defaultContextRows.value = String(settings.contextRows);
-  if (openLinksInNewTab) openLinksInNewTab.checked = Boolean(settings.openLinksInNewTab);
+  if (defaultContextRows)
+    defaultContextRows.value = String(settings.contextRows);
+  if (openLinksInNewTab)
+    openLinksInNewTab.checked = Boolean(settings.openLinksInNewTab);
 });
 
 // Sidebar settings — only available on Chrome/Edge (not Firefox)
@@ -312,16 +384,21 @@ const sidebarGroup = document.getElementById("sidebarGroup");
 if (!isFirefox && sidebarGroup) {
   sidebarGroup.hidden = false;
 }
-chrome.storage.local.get(SIDEBAR_SETTINGS_KEY).then((stored) => {
-  const settings = stored?.[SIDEBAR_SETTINGS_KEY] || {};
-  if (sidebarEnabled) sidebarEnabled.checked = Boolean(settings.enabled);
-}).catch(() => {});
+chrome.storage.local
+  .get(SIDEBAR_SETTINGS_KEY)
+  .then((stored) => {
+    const settings = stored?.[SIDEBAR_SETTINGS_KEY] || {};
+    if (sidebarEnabled) sidebarEnabled.checked = Boolean(settings.enabled);
+  })
+  .catch(() => {});
 
 if (sidebarEnabled) {
   sidebarEnabled.addEventListener("change", () => {
-    chrome.storage.local.set({
-      [SIDEBAR_SETTINGS_KEY]: { enabled: sidebarEnabled.checked },
-    }).catch(() => {});
+    chrome.storage.local
+      .set({
+        [SIDEBAR_SETTINGS_KEY]: { enabled: sidebarEnabled.checked },
+      })
+      .catch(() => {});
   });
 }
 
@@ -352,7 +429,10 @@ if (redactNameList) {
   let _redactNameListSaveTimer = null;
   redactNameList.addEventListener("input", () => {
     clearTimeout(_redactNameListSaveTimer);
-    _redactNameListSaveTimer = setTimeout(() => persistAllSettingsFromUi().catch(console.error), 500);
+    _redactNameListSaveTimer = setTimeout(
+      () => persistAllSettingsFromUi().catch(console.error),
+      500,
+    );
   });
   // Keep the change listener as a final flush on blur/commit.
   redactNameList.addEventListener("change", () => {
