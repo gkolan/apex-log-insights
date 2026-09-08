@@ -6,6 +6,7 @@
  * 2. Builds the CLI viewer Web Worker (viewer/apex-parser-worker.js)
  * 3. Generates shared/app.js and shared/styles.css from viewer sources + extension overlays
  * 4. Runs build-chrome.sh, build-edge.sh, build-firefox.sh to assemble + zip all extensions
+ * 5. Packages the Firefox reviewer source archive and copies release artifacts into docs/
  *
  * Usage:
  *   node --import tsx scripts/export-extension.ts                  — rebuild current version
@@ -210,6 +211,11 @@ async function main(): Promise<void> {
     execFileSync("bash", [script], { cwd: extPkg, stdio: "inherit" });
   }
 
+  execFileSync(process.execPath, ["scripts/build-firefox-source.mjs"], {
+    cwd: root,
+    stdio: "inherit",
+  });
+
   // ─── 5. Copy release artifacts to docs/ ───────────────────────────────────
 
   const docsReleases = resolve(root, "docs/releases");
@@ -217,6 +223,10 @@ async function main(): Promise<void> {
     chrome: { src: `chrome-extension-v${newVersion}.zip`, dest: "chrome" },
     edge: { src: `edge-extension-v${newVersion}.zip`, dest: "edge" },
     firefox: { src: `firefox-extension-v${newVersion}.xpi`, dest: "firefox" },
+    firefoxSource: {
+      src: `firefox-source-v${newVersion}.zip`,
+      dest: "firefox",
+    },
   };
 
   for (const { src, dest } of Object.values(artifactMap)) {
@@ -233,6 +243,9 @@ async function main(): Promise<void> {
   console.log(`\n[export] Done. Version ${newVersion}`);
   console.log(
     `  Extensions: packages/browser-ext/dist/{chrome-extension-v${newVersion}.zip, edge-extension-v${newVersion}.zip, firefox-extension-v${newVersion}.xpi}`,
+  );
+  console.log(
+    `  Firefox source: packages/browser-ext/dist/firefox-source-v${newVersion}.zip`,
   );
   console.log(`  Releases:   docs/releases/{chrome,edge,firefox}/`);
   console.log(`  CLI worker:  viewer/apex-parser-worker.js`);

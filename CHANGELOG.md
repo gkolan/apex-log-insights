@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Added the required Chrome promotional tile and a reproducible Firefox reviewer source archive so browser-store submissions include the assets and source materials required for review.
+- Removed the unused `scripting` permission from Firefox while retaining it for the user-enabled Chrome and Edge file sidebar.
+- Added current Firefox reviewer instructions and submission checks that replace stale store copy and reproduce the bundled worker from the attached source archive.
+- Corrected cached-payload matching so automatic pruning enforces the five-log retention limit and the popup's clear action removes current and legacy cached reports.
+- Aligned the Triage database summary with the `DML Operations` label used by Data & Limits.
+- Integrated captured failure context into the matching `What happened` line item, including occurrence counts and preceding-event links, and removed the separate Failure context section.
+- Removed dormant legacy issue, exception, warning, and Evidence Pointers panels from the viewer and browser shells so future visibility changes cannot expose duplicate report sections.
+- Release archives now include the complete Certinia BSD 3-Clause notice. The security audit declares its scanners and configuration, uses only installed tools, and exits unsuccessfully when it finds vulnerabilities or cannot complete a scan.
+- VS Code report panels retain their stale-source warning when the webview is restored, the rendered accessibility check follows the copy button's accessible label, and DML operation counts are no longer presented as row totals.
+
+- Search fields, matching log rows, context lines, and redaction fields now use paired theme colors with readable text in browser extensions and the VS Code webview. Neutral surfaces replace blue-tinted text and accent backgrounds; blue remains available for links and focus indicators.
+- Toolbar popups expose the selected theme and have a main landmark, labeled groups use valid roles, and the file sidebar keeps valid dialog semantics. Table copy actions now expose labeled keyboard-operable buttons and announce their result.
+- Report navigation wraps in narrow panels so all view links remain visible and keyboard-reachable.
+- Forced-color mode no longer preserves custom status colors over the system palette.
+
+- The VS Code webview assembler removes the standalone viewer's external service-worker registration script, preventing a blocked script reference in the packaged webview.
+
+### Changed
+
+- Added `feedback@apexloginsights.com` to public feedback and privacy contacts, browser and VS Code listing copy, and the GitHub issue chooser. Clarified cached-log removal and corrected the Chrome promotional-image requirement.
+
+- Refined the GitHub README with a first-analysis walkthrough, a synthetic sample log, explicit source-build availability, and complete clone instructions. The issue chooser now links to maintained help and privacy guides instead of disabled GitHub features.
+
+- Aligned documentation with Record Health Check's reader-first standard: installation guides distinguish source builds from published packages, store descriptions cover the available interfaces, and user-facing pages separate product instructions from contributor checks and local audit evidence. Copy-ready channel listings are maintained in the ignored local listings workspace.
+
+- VS Code report Search, redaction, and Refresh Analysis controls use neutral editor surfaces in the default Light and Dark themes. The stale-source banner now follows the editor theme with readable text.
+- Setup and toolbar-popup controls now use neutral accents in both themes, including verification badges, step markers, primary buttons, selected theme buttons, checkboxes, and keyboard focus indicators.
+- Updated product screenshots with the white setup screen first and paired Light and Night captures of both setup states, the analyzer start screen, all five report views, and the actual toolbar popup, including permission and expanded-redaction states. The white log-page launcher is shared by both themes. Updated the README, store upload order, capture instructions, and browser-verification notes.
+- The browser extension's setup page now defaults to white with grey text and stores its theme separately from the report. The log-page launcher uses the same neutral palette, while the toolbar popup header follows the report's surface color.
+- Setup verification and completion use matching card dimensions, a visible outer border, and a divider between the brand and instructions. On narrow screens the divider separates the stacked sections horizontally. The completion message is vertically centered in its panel, with the status badge and theme controls at the top.
+
 ## [1.2.0] - 2026-08-25
 
 ### Added

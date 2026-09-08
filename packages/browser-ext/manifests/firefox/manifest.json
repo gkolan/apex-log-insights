@@ -5,8 +5,7 @@
   "description": "Free offline toolkit for Apex debug logs — execution timeline, governor limits, SOQL analysis, and guided triage.",
   "permissions": [
     "tabs",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "*://*/*.log",

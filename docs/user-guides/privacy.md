@@ -66,7 +66,7 @@ repository is public, and never commit or attach it to a bug report.
 
 ## Reporting a vulnerability
 
-Do not include sensitive logs or exploit details in a public issue. Contact the repository owner privately through the security-reporting method configured on the GitHub repository.
+Do not include sensitive logs or exploit details in a public issue. Contact [feedback@apexloginsights.com](mailto:feedback@apexloginsights.com) privately to report a vulnerability or ask a privacy question. Start with a description of the issue; do not attach an unreviewed production log.
 
 ## Related
 

@@ -34,6 +34,41 @@ version synchronization, and documentation. A skipped test must identify a
 specific unavailable prerequisite or tracked issue; do not use a skip to hide a
 regression.
 
+## Check rendered accessibility
+
+Build the current sources, then audit the installed Chrome or Edge browser in an
+isolated temporary profile:
+
+```bash
+pnpm build
+node scripts/audit-accessibility.mjs --browser=chrome --report=/tmp/apex-chrome-accessibility.json
+node scripts/audit-accessibility.mjs --browser=msedge --report=/tmp/apex-edge-accessibility.json
+```
+
+The runner uses the actual unpacked extension and browser-action popup. Edge
+also exercises file-permission settings and the permission-required state. Chrome
+disables debug-loaded extensions when file access changes, so that state is
+recorded as not run in Chrome. It checks setup, the analyzer start screen, all five views,
+redaction preferences, search matches, error matches, keyboard search and copy,
+320 CSS-pixel reflow, and forced colors. Pass `--screenshots=/absolute/path` to
+save paired Light and Night captures. Chromium extension debugging requires a
+recent installed browser; these headed checks stay outside `pnpm validate`.
+
+The axe-core scan includes WCAG 2.2 A/AA and best-practice rules. An additional
+computed-color check requires at least 4.5:1 for search, matched rows, context
+lines, and redaction text. Reports retain violations and items requiring review;
+icons and clipped or obscured text must be inspected rather than counted as
+passes. The W3C [text contrast guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+explains the threshold. Automated checks do not establish complete WCAG conformance.
+
+Before release, repeat the same states in the packaged Firefox extension and an
+actual VS Code Extension Host using `scripts/accessibility-dom.mjs`. Check both
+default editor themes, the source-changed banner, and expanded redaction fields.
+Verify keyboard order, visible focus, source navigation, selection text, zoom,
+and high-contrast behavior. Review browser-owned permission UI separately from
+extension-owned pages. Record browser versions, checked states, manual findings,
+and screenshot provenance in ignored `reports/` or `internal/`. The public [screenshot index](../../assets/images/README.md) keeps only image captions and synthetic-input provenance.
+
 ## Test the external corpus
 
 Run the optional extended gate after changing parser behavior, report assembly,

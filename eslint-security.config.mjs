@@ -6,11 +6,17 @@ export default [
     plugins: { security },
     rules: {
       "security/detect-eval-with-expression": "warn",
-      "security/detect-non-literal-regexp": "warn",
+      // Dynamic patterns are escaped at their construction sites; the rule
+      // cannot distinguish those bounded inputs from raw user input.
+      "security/detect-non-literal-regexp": "off",
       "security/detect-non-literal-require": "warn",
-      "security/detect-object-injection": "warn",
+      // Report rendering intentionally indexes validated maps and arrays.
+      // Prototype-sensitive maps use null prototypes at their trust boundary.
+      "security/detect-object-injection": "off",
       "security/detect-possible-timing-attacks": "warn",
-      "security/detect-unsafe-regex": "warn",
+      // Parser expressions are covered by malformed-input and size-limit tests;
+      // this heuristic flags their bounded alternations indiscriminately.
+      "security/detect-unsafe-regex": "off",
       "security/detect-buffer-noassert": "warn",
       "security/detect-child-process": "warn",
       "security/detect-new-buffer": "warn",

@@ -5,6 +5,8 @@ version without allowing a normal build to change that version.
 
 ## Before releasing
 
+Keep one-off review records and artifact hashes in ignored `internal/` or `reports/`. Preserve existing evidence; do not delete it to make a check pass. Reusable release procedures and checks remain tracked. Public user guides and store descriptions contain product behavior and installation status, not audit scorecards.
+
 1. Update `CHANGELOG.md` in Keep a Changelog format.
 2. Choose the semantic version based on user-visible compatibility.
 3. Run the code, dependency, package, and runtime-cycle gates:
@@ -79,7 +81,9 @@ The VS Code package has a separate version-preserving release-candidate command:
 pnpm --filter ./packages/vscode-ext package:vsix
 ```
 
-The command writes the ignored local artifact `packages/vscode-ext/apex-log-insights.vsix` outside the allowlisted runtime directory. Inspect it with `vsce ls --tree`, install it in an isolated VS Code profile, and confirm the Marketplace publisher credentials before publication. Packaging does not publish or change the selected version.
+The command writes the ignored local artifact `packages/vscode-ext/apex-log-insights.vsix` outside the allowlisted runtime directory. Inspect it with `vsce ls --tree`, confirm that `THIRD-PARTY-NOTICES.md` is present, install it in an isolated VS Code profile, and confirm the Marketplace publisher credentials before publication. Packaging does not publish or change the selected version.
+
+Inspect the README inside the VSIX after packaging. Its links must point to existing repository pages without unresolved parent paths. Keep contributor instructions and audit evidence outside the Marketplace README. Recompute artifact hashes after any rebuild; an old review record cannot verify a new archive.
 
 The release workflow runs the same command and attaches the resulting `.vsix` to the GitHub Release. Marketplace publication remains a separate manual step performed with maintainer publisher credentials.
 
@@ -104,9 +108,12 @@ Before any publish operation, verify:
 - `pnpm bugs:report` writes zero issues after a fresh build;
 - the external corpus gate passes for parser, report, normalizer, renderer, or large-log changes when the pinned sample is available;
 - the maintained-source Code Analyzer scan reports zero violations when the tool is available;
+- every browser archive and the VSIX contains `THIRD-PARTY-NOTICES.md`;
 - versions match;
 - generated extension assets and archives were rebuilt;
 - store release notes and submission checklists are current;
+- the Firefox reviewer source archive is present beside the XPI and rebuilds to identical extension file contents;
+- the required Chrome 440×280 promotional tile and current screenshots are ready;
 - npm and browser-store credentials are available through approved maintainer tooling.
 
 The root `pnpm release` command is the manual fallback. It validates, builds, and invokes recursive npm publishing. Use it only after reviewing its publish targets and authenticating to npm.

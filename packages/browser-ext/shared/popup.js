@@ -48,7 +48,9 @@ const clearCachedLogsStatus = document.getElementById("clearCachedLogsStatus");
 let fileAccessBannerDismissed = false;
 
 function isCachedLogPayloadKey(key) {
-  return /^apex-(?:log|new-tab-state)-\d+$/.test(key);
+  return /^apex-(?:log-\d+(?:-[a-z0-9]{6})?|new-tab-state-\d+(?:-[a-z0-9]{8})?)$/.test(
+    key,
+  );
 }
 
 function getFileSchemeAccessAllowed() {
@@ -122,7 +124,10 @@ function syncThemeButtons(preference) {
   const themeDarkBtn = document.getElementById("themeDarkBtn");
 
   [themeSystemBtn, themeLightBtn, themeDarkBtn].forEach((btn) => {
-    if (btn) btn.classList.remove("active");
+    if (btn) {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-pressed", "false");
+    }
   });
 
   if (preference === "light" && themeLightBtn)
@@ -130,6 +135,13 @@ function syncThemeButtons(preference) {
   else if (preference === "dark" && themeDarkBtn)
     themeDarkBtn.classList.add("active");
   else if (themeSystemBtn) themeSystemBtn.classList.add("active");
+  const selected =
+    preference === "light"
+      ? themeLightBtn
+      : preference === "dark"
+        ? themeDarkBtn
+        : themeSystemBtn;
+  selected?.setAttribute("aria-pressed", "true");
 }
 
 function setFileAccessBannerVisible(visible) {

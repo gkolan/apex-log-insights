@@ -76,6 +76,7 @@ cp -r "$PKG_DIR/shared/"* "$OUT_DIR/"
 
 # Overwrite manifest with Chrome-specific version
 cp "$PKG_DIR/manifests/chrome/manifest.json" "$OUT_DIR/manifest.json"
+cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$OUT_DIR/THIRD-PARTY-NOTICES.md"
 
 # Ensure latest built worker is in the output
 cp "$DIST_DIR/content/apex-parser-worker.js" "$OUT_DIR/content/" 2>/dev/null || true

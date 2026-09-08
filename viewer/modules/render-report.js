@@ -239,10 +239,10 @@ export function renderReport(report) {
       <section class="panel" id="dmlPanel">
         <div class="rawLogHeader">
           <div>
-            <h2>DML Rows</h2>
-            <p class="subheading">Total records inserted, updated, deleted, or upserted</p>
+            <h2>DML Operations</h2>
+            <p class="subheading">Each operation shows the number of affected records</p>
           </div>
-          <span class="pillBtn">${num(report.data.dml.length)} total</span>
+          <span class="pillBtn">${num(report.data.dml.length)} operations</span>
         </div>
         <div class="sectionBody">
           ${dmlTable(report.data.dml)}

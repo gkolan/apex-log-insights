@@ -38,6 +38,10 @@ web-ext-artifacts/
 audit/
 bugs/
 reports/
+internal/
+tasks/
+evidence/
+listings/
 code-analyzer-output/
 external-corpus/
 # Backward-compatible ignore for scan output created before the dedicated folder.

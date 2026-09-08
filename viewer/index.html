@@ -140,7 +140,7 @@
     </button>
     <div id="sidebarOverlay" class="sidebar-overlay" hidden></div>
     <div class="app-layout">
-      <aside
+      <div
         id="fileSidebar"
         class="file-sidebar"
         role="dialog"
@@ -204,7 +204,7 @@
           class="file-sidebar-list"
           aria-label="Available log files"
         ></ul>
-      </aside>
+      </div>
       <div class="app-content">
         <main>
           <div id="canonicalReportView" class="canonicalReportView"></div>
@@ -243,19 +243,6 @@
               <div id="triageHighlightsList" class="reportList"></div>
               <div id="triageSnapshotGrid" class="reportCardGrid"></div>
             </div>
-          </section>
-
-          <section class="panel" id="logCompletenessPanel" hidden>
-            <div class="rawLogHeader">
-              <div>
-                <h2 id="logCompletenessHeading">Log quality warning</h2>
-                <p
-                  id="logCompletenessSubheading"
-                  class="subheading sectionSubheading"
-                ></p>
-              </div>
-            </div>
-            <div id="logCompletenessContent"></div>
           </section>
 
           <section class="panel" id="resourceUsagePanel">
@@ -321,33 +308,6 @@
               </div>
             </div>
             <div id="savepointList"></div>
-          </section>
-
-          <section class="panel" id="issuesPanel" hidden>
-            <div class="rawLogHeader">
-              <div>
-                <h2 id="issuesHeading">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="section-icon"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" /></svg
-                  >Issues
-                </h2>
-                <p id="issuesSubheading" class="subheading"></p>
-              </div>
-            </div>
-            <div id="issuesTable"></div>
           </section>
 
           <section class="panel" id="executionInsightsPanel">

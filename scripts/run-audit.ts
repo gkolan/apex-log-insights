@@ -12,7 +12,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +26,7 @@ mkdirSync(auditDir, { recursive: true });
 
 const timestamp = new Date().toISOString().slice(0, 10);
 let issueIndex = 0;
+let scanFailed = false;
 
 function nextId(): string {
   issueIndex += 1;
@@ -128,9 +129,12 @@ try {
       tableOutput.includes("No known vulnerabilities")
     ) {
       console.log("  No dependency vulnerabilities found.");
+    } else if (vulnLines.length === 0) {
+      throw new Error("pnpm audit did not return a recognized result");
     }
   }
 } catch (err) {
+  scanFailed = true;
   console.warn("  ⚠ pnpm audit failed:", (err as Error).message);
 }
 
@@ -138,17 +142,23 @@ try {
 // 2. secretlint
 // ---------------------------------------------------------------------------
 console.log("\n🔍 Running secretlint...");
+const secretlintOutputPath = resolve(auditDir, ".secretlint-results.json");
 try {
-  const raw = execSync(
-    'npx secretlint "**/*" --secretlintrcFilePath .secretlintrc.json --format json 2>/dev/null || true',
-    { cwd: root, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  execSync(
+    `pnpm exec secretlint "**/*" --secretlintrc .secretlintrc.json --format json --output "${secretlintOutputPath}"`,
+    { cwd: root, stdio: "pipe" },
   );
+  const raw = readFileSync(secretlintOutputPath, "utf8");
+  rmSync(secretlintOutputPath, { force: true });
 
   let results: SecretlintResult[] = [];
   try {
     results = JSON.parse(raw) as SecretlintResult[];
+    if (!Array.isArray(results)) {
+      throw new Error("secretlint returned a non-array JSON result");
+    }
   } catch {
-    // non-JSON means no findings or secretlint not available
+    throw new Error("secretlint did not return its expected JSON result");
   }
 
   let secretCount = 0;
@@ -175,6 +185,8 @@ try {
     console.log("  No hardcoded secrets found.");
   }
 } catch (err) {
+  rmSync(secretlintOutputPath, { force: true });
+  scanFailed = true;
   console.warn("  ⚠ secretlint failed:", (err as Error).message);
 }
 
@@ -184,15 +196,18 @@ try {
 console.log("\n🔍 Running ESLint security rules...");
 try {
   const raw = execSync(
-    `npx eslint --config eslint-security.config.mjs "packages/*/src/**/*.{ts,js}" "viewer/**/*.js" "scripts/**/*.ts" --format json 2>/dev/null || true`,
+    `pnpm exec eslint --config eslint-security.config.mjs "packages/*/src/**/*.{ts,js}" "viewer/**/*.js" "scripts/**/*.ts" --format json 2>/dev/null || true`,
     { cwd: root, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
   );
 
   let results: EslintResult[] = [];
   try {
     results = JSON.parse(raw) as EslintResult[];
+    if (!Array.isArray(results)) {
+      throw new Error("ESLint returned a non-array JSON result");
+    }
   } catch {
-    // parse error or empty
+    throw new Error("ESLint did not return its expected JSON result");
   }
 
   let eslintCount = 0;
@@ -218,13 +233,18 @@ try {
     console.log("  No security lint issues found.");
   }
 } catch (err) {
+  scanFailed = true;
   console.warn("  ⚠ ESLint security scan failed:", (err as Error).message);
 }
 
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
-console.log(`\n✅ Audit complete — ${issueIndex} issue(s) written to audit/\n`);
+const auditPassed = issueIndex === 0 && !scanFailed;
+console.log(
+  `\n${auditPassed ? "✅ Audit complete" : "❌ Audit failed"} — ${issueIndex} issue(s) written to audit/\n`,
+);
+if (!auditPassed) process.exitCode = 1;
 
 // ---------------------------------------------------------------------------
 // Type helpers (not exported, just for internal casting)

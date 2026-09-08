@@ -1,0 +1,61 @@
+name: Bug report
+description: A log parses, renders, or reports something incorrectly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Attach only synthetic or sanitized logs. Review any log for org names, user names, record IDs, and endpoints before uploading it.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Browser extension (Chrome)
+        - Browser extension (Edge)
+        - Browser extension (Firefox)
+        - VS Code extension
+        - CLI
+        - Core library
+        - MCP server
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Extension version, or the package version from package.json.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+      description: Name the view (Triage Summary, Execution Story, Data & Limits, Diagnostics, Log Explorer) and the value that looked wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the log in ...
+        2. Go to the ... view
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Sanitized log or excerpt
+      description: Drag in a file, or paste the relevant lines. Include the log line numbers the report pointed to.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: The attached log is synthetic or sanitized.
+          required: true
+        - label: I searched existing issues for the same problem.
+          required: true

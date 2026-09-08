@@ -26,7 +26,7 @@
   const MAX_LOG_BYTES = 25 * 1024 * 1024;
 
   function isCachedLogPayloadKey(key) {
-    return /^apex-log-\d+$/.test(key);
+    return /^apex-log-\d+(?:-[a-z0-9]{6})?$/.test(key);
   }
 
   async function pruneCachedLogPayloads(preserveKey) {
@@ -82,6 +82,8 @@
 
   const root = document.createElement("div");
   root.id = "apex-open-launcher";
+  root.setAttribute("role", "region");
+  root.setAttribute("aria-label", "Apex Log Insights log actions");
   root.style.position = "fixed";
   root.style.top = "20px";
   root.style.right = "20px";
@@ -89,13 +91,14 @@
   root.style.display = "flex";
   root.style.gap = "12px";
   root.style.padding = "16px 18px";
-  root.style.border = "1px solid #3b4d66";
+  root.style.border = "1px solid #c9c9c9";
   root.style.borderRadius = "18px";
-  root.style.background = "rgba(23,30,46,0.985)";
-  root.style.boxShadow = "0 18px 40px rgba(0,0,0,0.35)";
+  // Keep the log-page prompt neutral, independent of the report theme.
+  root.style.background = "#ffffff";
+  root.style.boxShadow = "0 18px 40px rgba(0,0,0,0.16)";
   root.style.fontFamily =
     "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  root.style.color = "#f8fafc";
+  root.style.color = "#2e2e2e";
   root.style.flexDirection = "column";
   root.style.alignItems = "flex-start";
   root.style.minWidth = "340px";
@@ -126,18 +129,18 @@
   detail.style.fontFamily =
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
   detail.style.fontWeight = "500";
-  detail.style.color = "#94a3b8";
+  detail.style.color = "#5c5c5c";
 
   if (!isSalesforceLog || isOversized) {
-    root.style.border = "1px solid #b0892e";
-    root.style.background = "rgba(59,43,18,0.985)";
+    root.style.border = "1px solid #dd7a01";
+    root.style.background = "#fbf3e0";
     label.textContent = isOversized
       ? "This log exceeds the 25 MiB input limit"
       : "This .log file is not a Salesforce debug log";
     detail.textContent = isOversized
       ? `${fileName} • ${formatBytes(byteSize)}. The analyzer did not cache or copy this oversized page.`
       : `${fileName} • ${formatBytes(byteSize)}. Apex Log Insights only auto-analyzes Salesforce debug logs with standard Salesforce event lines.`;
-    detail.style.color = "#fde68a";
+    detail.style.color = "#6f3400";
     brandRow.appendChild(logoImg);
     brandRow.appendChild(label);
     root.appendChild(brandRow);
@@ -145,9 +148,9 @@
     const dismissBtn = document.createElement("button");
     dismissBtn.type = "button";
     dismissBtn.textContent = "Dismiss";
-    dismissBtn.style.border = "1px solid #5a4a2e";
-    dismissBtn.style.background = "#3a2f1f";
-    dismissBtn.style.color = "#fde68a";
+    dismissBtn.style.border = "1px solid #dd7a01";
+    dismissBtn.style.background = "#ffffff";
+    dismissBtn.style.color = "#6f3400";
     dismissBtn.style.borderRadius = "10px";
     dismissBtn.style.padding = "8px 11px";
     dismissBtn.style.fontSize = "12px";
@@ -172,7 +175,7 @@
   progress.style.fontSize = "13px";
   progress.style.fontWeight = "500";
   progress.style.lineHeight = "1.4";
-  progress.style.color = "#60a5fa";
+  progress.style.color = "#5c5c5c";
   progress.textContent = "Analyzed locally. Your data stays on your machine.";
 
   const actions = document.createElement("div");
@@ -185,9 +188,9 @@
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = labelText;
-    button.style.border = primary ? "1px solid #3b82f6" : "1px solid #3b4d66";
-    button.style.background = primary ? "#1e3a8a" : "#243044";
-    button.style.color = primary ? "#f8fafc" : "#e2e8f0";
+    button.style.border = primary ? "1px solid #8c8c8c" : "1px solid #c9c9c9";
+    button.style.background = primary ? "#f3f3f3" : "#ffffff";
+    button.style.color = primary ? "#2e2e2e" : "#5c5c5c";
     button.style.borderRadius = "10px";
     button.style.padding = primary ? "8px 12px" : "8px 11px";
     button.style.fontSize = "12px";
@@ -256,8 +259,8 @@
         );
       } catch (error) {
         stopProgress();
-        root.style.border = "1px solid #b45353";
-        root.style.background = "rgba(58,21,24,0.985)";
+        root.style.border = "1px solid #b60554";
+        root.style.background = "#fef0f3";
         label.textContent = "Apex Log Insights was reloaded";
         detail.textContent =
           "The old content script lost its extension context. Refresh this page to reopen the analyzer.";
@@ -265,7 +268,7 @@
           error instanceof Error
             ? error.message
             : "Extension context invalidated.";
-        progress.style.color = "#f87171";
+        progress.style.color = "#8a033e";
         openBtn.disabled = false;
         dismissBtn.disabled = false;
         return false;
@@ -283,15 +286,15 @@
         );
       } catch (error) {
         stopProgress();
-        root.style.border = "1px solid #b45353";
-        root.style.background = "rgba(58,21,24,0.985)";
+        root.style.border = "1px solid #b60554";
+        root.style.background = "#fef0f3";
         label.textContent = "Failed to open analyzer";
         detail.textContent =
           error instanceof Error
             ? error.message
             : "Extension context invalidated.";
         progress.textContent = "";
-        progress.style.color = "#f87171";
+        progress.style.color = "#8a033e";
         openBtn.disabled = false;
         dismissBtn.disabled = false;
         return false;
@@ -342,12 +345,12 @@
           if (openAnalyzerWithSourceUrl()) return;
         }
         stopProgress();
-        root.style.border = "1px solid #b45353";
-        root.style.background = "rgba(58,21,24,0.985)";
+        root.style.border = "1px solid #b60554";
+        root.style.background = "#fef0f3";
         label.textContent = "Failed to prepare log for analysis";
         detail.textContent = message;
         progress.textContent = "";
-        progress.style.color = "#f87171";
+        progress.style.color = "#8a033e";
         openBtn.disabled = false;
         dismissBtn.disabled = false;
       });

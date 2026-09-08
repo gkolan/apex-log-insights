@@ -8,7 +8,7 @@
   "labels": {
     "soqlTopTemplate": "{count} Longest-Running Queries",
     "soqlExpandedSubheading": "Chronological order (as executed)",
-    "dmlSubheading": "Total records inserted, updated, deleted, or upserted",
+    "dmlSubheading": "Each operation shows the number of affected records",
     "issueTopTemplate": "Showing first {count} encountered",
     "issueExpandedSubheading": "Showing all"
   },

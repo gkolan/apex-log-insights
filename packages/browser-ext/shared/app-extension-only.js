@@ -353,8 +353,6 @@ function hydrateExtensionReport(report, parsePayload, fileName, rawLogLines) {
 function resetExpandedState() {
   queriesExpanded = false;
   dmlExpanded = false;
-  errorsExpanded = false;
-  warningsExpanded = false;
   expandedScopeGroupKeys = new Set();
   selectedExecutionEventCategory = EXECUTION_EVENT_CATEGORY_ALL;
   if (executionTypeFilterSelect) {
@@ -837,12 +835,13 @@ function buildVerdict(report) {
   const burnRates = getGovernorBurnRate(report);
   const issues = getReportIssues(report);
   const patterns = getSoqlPatternSuspects(report);
-  const failedValidations = extensionArray(report?.trace?.validationBlocks).flatMap(
-    (vb) =>
-      extensionArray(vb?.rules).filter((r) => {
-        const o = String(r?.outcome || "").toUpperCase();
-        return o && o !== "PASS";
-      }),
+  const failedValidations = extensionArray(
+    report?.trace?.validationBlocks,
+  ).flatMap((vb) =>
+    extensionArray(vb?.rules).filter((r) => {
+      const o = String(r?.outcome || "").toUpperCase();
+      return o && o !== "PASS";
+    }),
   );
 
   const criticalLimits = [...burnRates.values()].filter(
@@ -1126,34 +1125,6 @@ if (toggleAllDmlBtn) {
   });
 }
 
-if (toggleAllErrorsBtn) {
-  toggleAllErrorsBtn.addEventListener("click", () => {
-    errorsExpanded = !errorsExpanded;
-    toggleAllErrorsBtn.hidden = allErrorsCount <= uiConfig.limits.errors;
-    setExpandButtonLabel(toggleAllErrorsBtn, errorsExpanded, allErrorsCount);
-    if (currentReportData) {
-      render(currentReportData, currentRawLogLines);
-      renderRawLogSearchResults(rawSearchInput.value);
-    }
-  });
-}
-
-if (toggleAllWarningsBtn) {
-  toggleAllWarningsBtn.addEventListener("click", () => {
-    warningsExpanded = !warningsExpanded;
-    toggleAllWarningsBtn.hidden = allWarningsCount <= uiConfig.limits.warnings;
-    setExpandButtonLabel(
-      toggleAllWarningsBtn,
-      warningsExpanded,
-      allWarningsCount,
-    );
-    if (currentReportData) {
-      render(currentReportData, currentRawLogLines);
-      renderRawLogSearchResults(rawSearchInput.value);
-    }
-  });
-}
-
 if (toggleResourceUsageBtn && resourceUsageBody) {
   toggleResourceUsageBtn.addEventListener("click", () => {
     setSectionCollapsed(
@@ -1422,10 +1393,7 @@ async function extensionScanAndPopulateSidebar() {
         resolve,
       );
     });
-    if (
-      response?.ok &&
-      Array.isArray(response.files)
-    ) {
+    if (response?.ok && Array.isArray(response.files)) {
       const currentFileName = currentReportData?.source?.fileName || "";
       extensionPopulateSidebarFromPayload({
         siblingLogFiles: response.files,

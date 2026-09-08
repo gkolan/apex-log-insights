@@ -4,25 +4,21 @@ Use this package when you want to open a local Apex debug log or directory from 
 
 ## Requirements and installation
 
-Requires Node.js 18 or later. The published package bundles its parser, so installing it pulls in no runtime dependencies.
+Follow the [source-build instructions](../../docs/user-guides/getting-started.md#build-from-source) first. The CLI bundles its parser and has no runtime dependencies. Public npm installation is not currently verified; check [availability](../../docs/user-guides/getting-started.md#availability).
 
 ```bash
-npm install --global @apex-log-insights/cli
+node packages/cli/dist/bin.js /path/to/debug.log
 ```
 
-Run without a global installation:
-
-```bash
-npx --yes @apex-log-insights/cli debug.log
-```
+Run from the repository root after building. Replace the example path with your log path and quote paths containing spaces. The examples below use the same built entry point.
 
 ## Usage
 
 ```bash
-apex-log debug.log
-apex-log ./directory-of-logs
-apex-log debug.log --port 3000
-apex-log debug.log --no-open
+node packages/cli/dist/bin.js debug.log
+node packages/cli/dist/bin.js ./directory-of-logs
+node packages/cli/dist/bin.js debug.log --port 3000
+node packages/cli/dist/bin.js debug.log --no-open
 ```
 
 | Option            | Behavior                                            |
@@ -40,17 +36,9 @@ Raw logs are limited to 25 MiB. The server validates and reads each request thro
 
 The server listens only on `127.0.0.1`, and log parsing occurs in the browser. In single-file mode, HTTP requests can read only the selected `.log` file. In folder mode, requests can read only regular `.log` files inside the selected directory; symbolic links and special files such as named pipes are not followed or served. Treat the printed URL as local access to that scope. See the repository [Privacy and security guide](../../docs/user-guides/privacy.md).
 
-## Development
+## Implementation reference
 
-From the repository root:
-
-```bash
-pnpm dev:cli
-pnpm --filter @apex-log-insights/cli build
-pnpm validate
-```
-
-The CLI serves the canonical files under `viewer/`; it does not own a separate UI implementation.
+For source changes, use [Contributing](../../CONTRIBUTING.md). The CLI serves the canonical files under `viewer/`; it does not own a separate UI implementation.
 
 Parser workers are emitted as classic IIFEs because the viewer creates them with the classic `Worker` API. Load and parse failures stay in the document as retryable status panels; the CLI does not use blocking browser alerts.
 

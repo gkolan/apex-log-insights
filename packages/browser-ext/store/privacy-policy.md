@@ -1,6 +1,6 @@
 # Privacy policy for Apex Log Insights
 
-_Last updated: August 1, 2026_
+_Last updated: September 7, 2026_
 
 This policy explains what the browser extension reads, processes, stores, and transmits. Read it before loading a production Apex debug log. The goal is to make the extension's local-processing and local-storage boundaries explicit.
 
@@ -56,7 +56,7 @@ Redaction is pattern-based. It may miss sensitive text or mask text that is not 
 | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `tabs`        | Recognizes `.log` tabs, opens the analyzer, and supports user-initiated local-file navigation.                          |
 | `storage`     | Stores the active analyzer payload, source information, preferences, and optional sidebar state in the browser profile. |
-| `scripting`   | Reads links from a local directory-listing tab after the user enables sibling-log discovery.                            |
+| `scripting`   | Chrome and Edge only. Reads links from a local directory-listing tab after the user enables sibling-log discovery.      |
 | `*://*/*.log` | Lets the content script recognize web-hosted `.log` URLs.                                                               |
 | `file:///*`   | Lets the extension handle local `.log` URLs after the user grants browser file access.                                  |
 
@@ -70,4 +70,4 @@ Update this policy when storage, permissions, network behavior, redaction, or th
 
 ## Contact
 
-Open a question or bug at the [project issue tracker](https://github.com/gkolan/apex-log-insights/issues). Do not attach an unreviewed production log or other sensitive content.
+Send feedback or privacy questions to [feedback@apexloginsights.com](mailto:feedback@apexloginsights.com). You can also report a bug at the [project issue tracker](https://github.com/gkolan/apex-log-insights/issues). Do not attach an unreviewed production log or other sensitive content.

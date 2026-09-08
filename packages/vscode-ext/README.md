@@ -1,44 +1,50 @@
 # Apex Log Insights for VS Code
 
-The VS Code extension analyzes a user-selected Apex debug log with the shared `@apex-log-insights/core` engine and displays the canonical five-view report in an editor panel. It does not require a local server, Salesforce credentials, or network access.
+Analyze a Salesforce Apex debug log beside its source file. Apex Log Insights opens five linked report views and lets you select a finding's **Log line** to reveal the corresponding raw text in the editor.
 
-## Use
+## Before you start
 
-1. Install `apex-log-insights.vsix` with **Extensions: Install from VSIX…**.
+Use desktop VS Code 1.96 or later and a readable `.log` file no larger than 25 MiB. Browser-hosted VS Code and virtual workspaces are not supported. No Salesforce credentials or separate local server are required.
+
+The extension is a source-build release candidate, not a verified Marketplace release. See [installation availability and source-build steps](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/getting-started.md#vs-code-extension) to obtain a local VSIX. Installing an existing VSIX does not require Node.js or pnpm.
+
+The packaged VSIX includes `THIRD-PARTY-NOTICES.md` with the license terms for
+the vendored parser code.
+
+## Analyze a log
+
+1. Install the candidate with **Extensions: Install from VSIX…**.
 2. Open a Salesforce Apex debug log whose file name ends in `.log`.
-3. Run **Apex Log Insights: Analyze Active Log**, use **Analyze with Apex Log Insights** above a detected log, or use the Explorer context menu.
-4. Select a **Log line** in the report to reveal that exact line in the source editor.
-5. If the source changes, select **Refresh Analysis** in the stale-report notice. Unsaved editor text is analyzed without saving it.
+3. Run **Apex Log Insights: Analyze Active Log** from the command palette. You can also select **Analyze with Apex Log Insights** above a detected log or from the Explorer context menu.
+4. Start in **Triage Summary**, then investigate with **Execution Story**, **Data & Limits**, **Diagnostics**, and **Log Explorer**.
+5. Select a **Log line** in the report. The source editor should reveal that exact raw-log line, not an Apex class line with the same number.
 
-The extension has its own product-qualified commands and panel title, so it remains distinguishable when Certinia Apex Log Analyzer is also installed. Certinia commands begin with **Log:**; this extension consistently uses **Apex Log Insights:**.
+Use **Apex Log Insights: Analyze Log File…** to choose a file without opening it first. The report follows the active editor theme, including theme changes while the panel is open. See the [Light and Dark screenshots](https://github.com/gkolan/apex-log-insights/blob/main/assets/images/README.md#vs-code-screenshots).
 
-## Development
+## Refresh or recover
 
-From the repository root:
+If the source changes, the report remains visible and shows a stale-source notice. Select **Refresh Analysis** to analyze the current content. Unsaved editor text is analyzed without saving it. Deleting the source makes it unavailable; choose another existing log to continue.
 
-```bash
-pnpm --filter ./packages/vscode-ext build
-pnpm --filter ./packages/vscode-ext typecheck
-pnpm --filter ./packages/vscode-ext package:vsix
-```
+If commands are missing, confirm the extension is installed and enabled in the current workspace, then reload VS Code. A file over 25 MiB is rejected; capture a smaller log or reduce the input before retrying. Parsing can be cancelled and stops after 120 seconds if it does not finish.
 
-The production build writes the extension host, parser worker, and generated canonical webview under `dist/`. The package command writes `packages/vscode-ext/apex-log-insights.vsix` outside that runtime directory, without changing the selected root version.
+Commands use the **Apex Log Insights:** prefix to distinguish them from other Salesforce extensions.
 
-Marketplace copy and candidate release notes are maintained under [`store/`](store/). Publication is a separate authorized action and is not performed by the build.
+## Privacy
 
-The extension exposes:
+Parsing runs in a worker in the workspace extension host. Log processing makes no network request, starts no server, and writes no log or report to disk. Source and report content remain in memory while the panel is open. Closing the panel releases its references.
 
-- **Apex Log Insights: Analyze Active Log**;
-- **Apex Log Insights: Analyze Log File…**;
-- **Apex Log Insights: Refresh Analysis**;
-- **Analyze with Apex Log Insights** CodeLens for a detected `.log` file.
+In Remote SSH and Dev Containers, the workspace extension host is remote, so processing occurs there rather than on the desktop. Those environments were not included in the recorded candidate runtime checks. Read the [privacy guide](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/privacy.md) before sharing a log or report.
 
-These entry points validate the selected source and 25 MiB limit, then build a canonical report in a cancellable worker with a 120-second timeout. UTF-8 sizing does not allocate a second encoded copy of an open document. The worker validates the complete request envelope, independently derives report bytes from the actual text, and rejects malformed, empty, or oversized input before parsing; request metadata cannot override the recorded size. Cancellation, timeout, request supersession, malformed active-request responses, and any worker exit before a response explicitly settle the pending parse before terminating its worker and disposing the cancellation subscription. Responses for other request IDs are ignored. One report panel is reused per source URI. Closing a panel releases its report and raw-log references.
+## Other ways to analyze logs
 
-The panel never recreates itself after disposal. Closing it cancels active parsing, unsaved input is labeled explicitly, deleted sources remain visible as unavailable, and stale source coordinates warn instead of opening a different line.
+Apex Log Insights also has Chrome, Edge, and Firefox extensions, a command-line tool, a Node.js/TypeScript library, and an MCP server for AI clients. See [current availability](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/getting-started.md#availability) for installation options. MCP results pass to the configured AI client, which may send them to a cloud model.
 
-Contextual menus and CodeLens use a lightweight detector that inspects at most the first 100 lines or 64 KiB, whichever comes first. The bound is measured in exact UTF-8 bytes with the source's actual LF, CRLF, or CR separators; contextual discovery never parses the complete log.
+## Feedback and support
 
-## Privacy and support boundary
+Send questions, suggestions, or bug reports to [feedback@apexloginsights.com](mailto:feedback@apexloginsights.com). Include your VS Code and extension versions and the steps to reproduce the problem. Attach only a small synthetic or sanitized log.
 
-Parsing runs in the workspace extension host and report display runs in a restricted webview. The extension makes no network request and writes no log or report to disk. In Remote SSH and Dev Containers, the workspace extension host—and therefore parsing—runs in that remote environment. Virtual workspaces and browser-hosted VS Code are not supported.
+## Related
+
+- [Troubleshooting](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/troubleshooting.md)
+- [Report a problem using a synthetic or sanitized log](https://github.com/gkolan/apex-log-insights/issues)
+- [Contribute to Apex Log Insights](https://github.com/gkolan/apex-log-insights/blob/main/CONTRIBUTING.md)

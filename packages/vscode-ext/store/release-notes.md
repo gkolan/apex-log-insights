@@ -9,5 +9,5 @@ Initial VS Code release candidate:
 - exact source-editor navigation from log-line evidence;
 - active-editor, file-picker, Explorer, and CodeLens entry points;
 - one reusable panel per source with stale-source detection and unsaved-content refresh;
-- restricted local-resource webview, VS Code theme support, and no processing-time network access;
+- restricted local-resource webview, neutral editor-themed controls and stale notices, and no processing-time network access;
 - product-qualified labels for clear coexistence with Certinia Apex Log Analyzer.

@@ -2,6 +2,7 @@
 /** Validates local Markdown links and repository-specific documentation invariants. */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
+import { documentationBoundaryIssues } from "./documentation-boundary.js";
 
 const root = process.cwd();
 const ignoredDirectories = new Set([
@@ -18,6 +19,10 @@ const ignoredDirectories = new Set([
   "coverage",
   "external-corpus",
   "reports",
+  "internal",
+  "tasks",
+  "evidence",
+  "listings",
 ]);
 const errors: string[] = [];
 
@@ -76,10 +81,19 @@ for (const directory of documentedDirectories) {
 
 for (const file of markdownFiles) {
   const content = readFileSync(file, "utf8");
+  const relative = file.slice(root.length + 1).replaceAll("\\", "/");
+  for (const issue of documentationBoundaryIssues(relative, content)) {
+    errors.push(`${relative}: ${issue}`);
+  }
   const linkPattern = /\[[^\]]*\]\(([^)]+)\)/g;
   for (const match of content.matchAll(linkPattern)) {
-    const target = match[1]?.trim();
-    if (!target || /^(?:https?:|mailto:)/.test(target)) continue;
+    let target = match[1]?.trim();
+    if (!target) continue;
+    const repositoryPath = target.match(
+      /^https:\/\/github\.com\/gkolan\/apex-log-insights\/blob\/(?:main|HEAD)\/(.+)$/,
+    )?.[1];
+    if (repositoryPath) target = resolve(root, repositoryPath);
+    else if (/^(?:https?:|mailto:)/.test(target)) continue;
     const [pathPart, anchor] = target.split("#", 2);
     const withoutAnchor = pathPart?.replace(/^<|>$/g, "");
     const decoded = decodeURIComponent(withoutAnchor || "");
@@ -134,6 +148,7 @@ const userFacingDocs = [
   "packages/browser-ext/store/listing.md",
   "packages/browser-ext/store/privacy-policy.md",
   "packages/browser-ext/store/screenshots-guide.md",
+  "packages/vscode-ext/README.md",
   "packages/cli/README.md",
   "packages/core/README.md",
   "packages/mcp/README.md",

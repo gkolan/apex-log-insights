@@ -69,7 +69,7 @@ Fix the lowest layer that first becomes incorrect. Do not add renderer logic to 
 
 `knip.json` declares runtime and integration-test entry points and excludes generated bundles, downloaded test harnesses, and tool-owned worktrees. Root scripts, tests, and viewer entry points belong to the `"."` workspace because Knip does not apply top-level entry patterns when explicit workspaces are configured. Update the applicable workspace when adding an entry point or generated runtime companion so `pnpm bugs:report` does not classify shipped files as unused or unresolved.
 
-`code-analyzer.yml` applies the repository ESLint rules, excludes generated artifacts, and sets CPD's substantial-duplication threshold to 300 tokens. Four renderer modules are excluded from Code Analyzer because its CPD lexer cannot parse their valid nested template literals; `pnpm lint` and the renderer test suite continue to cover those files.
+`code-analyzer.yml` applies the repository ESLint rules, excludes generated artifacts, and sets CPD's substantial-duplication threshold to 300 tokens. Four renderer modules are excluded from Code Analyzer because its CPD lexer cannot parse their valid nested template literals; `pnpm lint` and the renderer test suite continue to cover those files. `pnpm audit:report` uses the installed Secretlint and ESLint security packages, fails when a scanner cannot return its expected result, and fails when any finding is written.
 
 ### Validation gate
 
@@ -167,6 +167,10 @@ Every code change includes documentation in the same changeset.
 
 Do not duplicate long instructions. Update the source-of-truth page and link to it from other pages. The [Documentation index](docs/README.md) lists ownership.
 
+Keep user instructions separate from contributor checks, following the [audience boundary](docs/development/documentation-standard.md#keep-user-guidance-separate-from-contributor-checks). Store point-in-time audit and release evidence under ignored `internal/` or `reports/`; preserve local evidence rather than deleting it to satisfy a check. Public screenshots may retain their synthetic-input provenance, but not audit scorecards.
+
+Read each affected page completely, verify its facts against source, then review its prose and rendered links. Distinguish source builds, local candidates, and published installs. Before handing off a pull request, run the checks and build from `.github/workflows/ci.yml`; after pushing, confirm the hosted validation and VS Code Extension Host jobs pass. Do not call a branch CI-ready while a required check is missing or failing.
+
 Write concrete prose. State what changed, identify the responsible file or command, and explain how the reader can verify it. Avoid promotional claims, generic conclusions, vague attribution, and mechanical formatting. The [Writing guide](docs/development/writing-guide.md) includes examples and a review checklist.
 
 Every maintained page under `docs/` must pass `pnpm audit:docs`. The audit requires a clear title, reader-oriented opening, explicit purpose, ordered headings, an actionable aid, concise paragraphs, readable tables, labeled code fences, final navigation, and prose without em dashes. Automated structure checks supplement factual and editorial review; they do not replace it.
@@ -182,6 +186,9 @@ pnpm check:version-sync
 pnpm validate
 pnpm build
 ```
+
+Browser archives and the VS Code VSIX must contain `THIRD-PARTY-NOTICES.md`
+because their parser bundles include vendored Certinia code.
 
 Read [Release guide](docs/development/releasing.md) for publishing. Do not claim CI automation exists unless a tested workflow is checked into `.github/workflows/`.
 

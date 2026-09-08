@@ -17,6 +17,7 @@
   ],
   "ignoreDependencies": [
     "@arethetypeswrong/cli",
+    "@secretlint/secretlint-rule-preset-recommend",
     "@vitest/coverage-v8",
     "lint-staged",
     "madge"

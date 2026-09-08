@@ -44,12 +44,13 @@ export class AnalysisPanel {
   async showReport(
     source: AnalysisSource,
     report: OfflineReportV2,
+    preserveStatus = false,
   ): Promise<boolean> {
     const key = source.uri.toString();
     const panel = this.panels.get(key);
     if (!panel) return false;
     this.latest.set(key, { source, report });
-    this.statuses.delete(key);
+    if (!preserveStatus) this.statuses.delete(key);
     await panel.webview.postMessage({
       type: "SHOW_REPORT",
       report,
@@ -138,7 +139,8 @@ export class AnalysisPanel {
       const current = this.latest.get(key);
       if (value.type === "READY") {
         const status = this.statuses.get(key);
-        if (current) await this.showReport(current.source, current.report);
+        if (current)
+          await this.showReport(current.source, current.report, true);
         if (status === "stale") {
           await panel.webview.postMessage({ type: "SOURCE_CHANGED" });
         } else if (status) {

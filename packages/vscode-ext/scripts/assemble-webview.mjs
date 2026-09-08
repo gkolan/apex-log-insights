@@ -9,6 +9,10 @@ const outputRoot = resolve(packageRoot, "dist/webview");
 
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(outputRoot, { recursive: true });
+await cp(
+  resolve(repositoryRoot, "THIRD-PARTY-NOTICES.md"),
+  resolve(packageRoot, "dist/THIRD-PARTY-NOTICES.md"),
+);
 await cp(resolve(viewerRoot, "modules"), resolve(outputRoot, "modules"), {
   recursive: true,
 });
@@ -42,6 +46,7 @@ const html = sourceHtml
     '<script nonce="{{NONCE}}" type="module" src="{{SCRIPT_URI}}"></script>',
   )
   .replace(/\s*<script>\s*if \("serviceWorker"[\s\S]*?<\/script>/, "")
+  .replace(/\s*<script src="\.\/register-sw\.js"><\/script>/, "")
   .replace("./styles.css?v=1.2.0", "{{STYLE_URI}}")
   .replace(
     "</head>",

@@ -1,4 +1,4 @@
-const THEME_STORAGE_KEY = "apex-log-insights-theme";
+const THEME_STORAGE_KEY = "apex-log-insights-setup-theme";
 const isFirefox = /Firefox/.test(navigator.userAgent);
 
 const openSettingsBtn = document.getElementById("openSettingsBtn");
@@ -63,19 +63,9 @@ async function getPreferredTheme() {
       return stored[THEME_STORAGE_KEY];
     }
   } catch {
-    // Ignore storage issues and fall back to system preference.
+    // Use the light setup theme when no preference can be read.
   }
-  try {
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
-    ) {
-      return "light";
-    }
-  } catch {
-    // Ignore media query issues and fall back to dark mode.
-  }
-  return "dark";
+  return "light";
 }
 
 async function persistTheme(theme) {

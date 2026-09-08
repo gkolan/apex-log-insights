@@ -182,6 +182,8 @@ This repository runs `pnpm check:docs` to verify local Markdown targets, but tha
 
 Read the draft once for facts and once for style.
 
+Read the whole page rather than only its diff. User-facing pages should pass the single-link test: prerequisites, exact actions, expected results, and recovery are understandable without opening contributor checklists. Keep test scores and reviewer notes in local evidence. A product's diagnostic finding is user information; a documentation audit score is not.
+
 ### Facts
 
 - Does every command exist?

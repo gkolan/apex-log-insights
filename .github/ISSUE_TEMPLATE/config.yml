@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feedback by email
+    url: mailto:feedback@apexloginsights.com
+    about: Send questions, suggestions, or bug reports. Attach only synthetic or sanitized logs.
+  - name: Question or usage help
+    url: https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/troubleshooting.md
+    about: Find help with installation, configuration, and report problems.
+  - name: Privacy and security guidance
+    url: https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/privacy.md
+    about: Review data handling and redaction before sharing a log. Do not post vulnerabilities or sensitive logs in public issues.

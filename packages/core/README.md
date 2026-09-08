@@ -4,9 +4,7 @@ Use this package to parse Apex debug-log text or build a report inside a JavaScr
 
 ## Install and use
 
-```bash
-pnpm add @apex-log-insights/core
-```
+Public npm installation is not currently verified. Follow the [source-build and local-package instructions](../../docs/user-guides/getting-started.md#library), then install the local tarball into your application. The example below uses the package name after that installation. Supply `logText` from your application's selected log before calling the parser.
 
 ```typescript
 import {

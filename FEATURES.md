@@ -51,7 +51,7 @@ This page describes shipped capabilities. Proposed work belongs in GitHub issues
 ## Viewer experience
 
 - Triage, Execution, Data, Diagnostics, and Evidence views;
-- Cosmos-inspired Night and Day themes built from semantic SLDS 2 styling hooks, with Night as the default;
+- Cosmos-inspired Night and Day report themes built from semantic SLDS 2 styling hooks, with Night as the report default; extension setup defaults to white with grey text and saves its theme separately, while the log-page launcher uses a fixed white and grey palette;
 - installable offline viewer assets with web manifest and service worker;
 - one canonical five-view interface across the standalone viewer, CLI, browser extension, and VS Code, with execution waterfalls, lifecycle phases, CPU and heap trajectories, record and automation drill-downs, bounded evidence paging, CSV export, responsive layouts, and keyboard-complete navigation;
 - responsive navigation, file sidebar support, and background parsing in a Web Worker.

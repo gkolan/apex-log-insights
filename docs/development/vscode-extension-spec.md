@@ -4,9 +4,7 @@ Status: implemented as the `1.2.0` local release candidate. Marketplace publicat
 
 This specification records the product and engineering contract for developers who maintain the Visual Studio Code interface. Use it to understand why the candidate behaves as it does and which acceptance criteria future changes must preserve.
 
-The [gated implementation record](vscode-extension-implementation-plan.md) preserves the sequence used to build and verify this specification. For installation and current usage, read the [VS Code package guide](../../packages/vscode-ext/README.md).
-
-The [Certinia Apex Log Analyzer review](vscode-certinia-review.md) records interaction and engineering ideas from an established VS Code log analyzer, along with patterns this project should not copy.
+For installation and current usage, read the [VS Code package guide](../../packages/vscode-ext/README.md). Historical implementation and review records remain in local maintainer evidence.
 
 ## Product decision
 
@@ -328,5 +326,3 @@ The minimum supported VS Code version is `1.96.0`, which is declared in the pack
 ## Related
 
 - [VS Code package guide](../../packages/vscode-ext/README.md)
-- [VS Code implementation record](vscode-extension-implementation-plan.md)
-- [VS Code release review](vscode-extension-release-review.md)

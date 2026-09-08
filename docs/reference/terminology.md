@@ -18,15 +18,18 @@ Use “Salesforce ID,” not “SF ID,” in prose. Use `Id` only when referring
 
 ## Interfaces
 
-| User-facing name  | Package or location              | Purpose                                              |
-| ----------------- | -------------------------------- | ---------------------------------------------------- |
-| browser extension | `@apex-log-insights/browser-ext` | Opens and analyzes logs in Chrome, Edge, or Firefox  |
-| CLI               | `@apex-log-insights/cli`         | Starts the local viewer for a file or directory      |
-| core library      | `@apex-log-insights/core`        | Parses log text and builds reports in an application |
-| MCP server        | `@apex-log-insights/mcp`         | Exposes focused log-analysis tools to an MCP client  |
-| viewer            | `viewer/`                        | Displays an offline report in a browser              |
+| User-facing name  | Package or location              | Purpose                                                 |
+| ----------------- | -------------------------------- | ------------------------------------------------------- |
+| browser extension | `@apex-log-insights/browser-ext` | Opens and analyzes logs in Chrome, Edge, or Firefox     |
+| VS Code extension | `packages/vscode-ext/`           | Analyzes a selected log in the workspace extension host |
+| CLI               | `@apex-log-insights/cli`         | Starts the local viewer for a file or directory         |
+| core library      | `@apex-log-insights/core`        | Parses log text and builds reports in an application    |
+| MCP server        | `@apex-log-insights/mcp`         | Exposes focused log-analysis tools to an MCP client     |
+| viewer            | `viewer/`                        | Displays an offline report in a browser                 |
 
 Use “MCP client” for the application that starts and calls the MCP server. Use “AI client” only when explaining that the client may send tool results to a model.
+
+Use “Node.js/TypeScript library” when introducing the core library to users. Node.js is a runtime prerequisite for source-based CLI, library, and MCP usage, not a separate Apex Log Insights extension. Browser-extension users do not need Node.js or pnpm.
 
 ## Views
 

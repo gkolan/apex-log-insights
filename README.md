@@ -1,8 +1,32 @@
 # Apex Log Insights
 
-Apex Log Insights turns Salesforce Apex debug logs into evidence-backed, searchable reports. It is available as a browser extension, local CLI, TypeScript library, and MCP server for AI clients.
+Apex Log Insights analyzes Salesforce Apex debug logs locally. Investigate execution order, SOQL and DML, governor limits, and errors, then follow findings to the raw log lines that support them.
+
+Use the browser extension in Chrome, Edge, or Firefox, or build the VS Code extension, CLI, Node.js/TypeScript library, and MCP server from source.
 
 Log processing is local. The MCP server also parses locally, but its structured results are passed to your AI client; see [Privacy and security](docs/user-guides/privacy.md).
+
+## Installation
+
+| Platform | Install                                                                                                                        | Status            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| Chrome   | [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp)                | Available         |
+| Edge     | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian) | Available         |
+| Firefox  | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/)                                           | Available         |
+| VS Code  | [Build from source](docs/user-guides/getting-started.md#vs-code-extension)                                                     | Not published yet |
+
+<!-- Publish the VS Code extension, then swap its row to: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=apex-log-insights.apex-log-insights) | Available -->
+
+The CLI, core library, and MCP server are available through [source builds](docs/user-guides/getting-started.md#build-from-source). Store versions can differ from this repository; check [installation availability](docs/user-guides/getting-started.md#availability) for details.
+
+## Analyze your first log
+
+1. Install a browser extension from the table above and open its analyzer.
+2. Drop a Salesforce Apex debug-log file ending in `.log` onto the page.
+3. Start in **Triage Summary** for the transaction outcome and findings.
+4. Open a finding's **Log line** link to inspect its evidence in **Log Explorer**.
+
+For a sample without production data, download the [synthetic Opportunity trigger log](fixtures/webstore-demo-opportunity-trigger.log) using GitHub's **Download raw file** control. If the extension cannot open a local file, follow [Getting started](docs/user-guides/getting-started.md#browser-extension) and [Troubleshooting](docs/user-guides/troubleshooting.md).
 
 ## Start here
 
@@ -15,9 +39,11 @@ Log processing is local. The MCP server also parses locally, but its structured 
 | Let an AI client analyze logs       | MCP server        | [MCP setup](packages/mcp/README.md)                                                |
 | Contribute to the project           | Monorepo          | [Contributing](CONTRIBUTING.md)                                                    |
 
-Install the extension from [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp), [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian), or [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/).
+## Screenshots
 
-<p align="center"><img src="assets/images/3.png" alt="Apex Log Insights Triage Summary in dark mode" width="49%" /> <img src="assets/images/2.png" alt="Apex Log Insights Execution Story in light mode" width="49%" /></p>
+<p align="center"><img src="assets/images/setup-verification-crop.png" alt="Apex Log Insights setup: allow access to local debug logs" width="62%" /></p>
+
+<p align="center"><img src="assets/images/light/triage-summary.png" alt="Apex Log Insights Triage Summary in Light theme" width="49%" /> <img src="assets/images/2.png" alt="Apex Log Insights Execution Story in Night theme" width="49%" /></p>
 
 ## What the report explains
 
@@ -31,7 +57,7 @@ The parser reports what the log supports. Missing debug events or insufficient d
 
 ## How transaction reconstruction works
 
-**Apex Log Insights reconstructs the complete transaction visible in one Salesforce debug log.** It follows the execution boundary, nests code units and operations in timestamp order, and links supported conclusions to the originating log lines.
+Apex Log Insights reconstructs the transaction events recorded in one Salesforce debug log. It follows the execution boundary, nests code units and operations in timestamp order, and links supported conclusions to the originating log lines.
 
 | Log evidence                                                                                           | How it is used                                                                                    |
 | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
@@ -73,38 +99,26 @@ The [documentation index](docs/README.md) organizes information into user guides
 
 ## Development
 
-Requires Node.js 18 or later and pnpm 9.
+Requires Git, Node.js 18 or later, and pnpm 9.15.4. Follow the [prerequisite setup](CONTRIBUTING.md#prerequisites) if pnpm is not installed.
 
 ```bash
-corepack enable
-corepack prepare pnpm@9.15.4 --activate
+git clone https://github.com/gkolan/apex-log-insights.git
+cd apex-log-insights
 pnpm install --frozen-lockfile
-pnpm format:check
-pnpm audit:docs
 pnpm validate
-pnpm test:coverage
-pnpm test:corpus
 pnpm build
 ```
 
-The parser retains zero runtime dependencies. Repository development uses Vitest and its V8 coverage provider; generated coverage reports stay local under the ignored `coverage/` directory.
-
-`pnpm test:corpus` is an optional networked compatibility gate for the pinned
-public Certinia Debug Log Analyzer sample. The command verifies the download,
-prints privacy-safe aggregate results, and removes a newly downloaded copy
-unless `--keep` is supplied. External logs remain ignored and are never part of
-the npm or extension artifacts.
-
-`pnpm format` and `pnpm format:check` discover maintained non-UI source and documentation files from Git, including non-ignored new files, while leaving generated extension/viewer bundles untouched.
-
-`pnpm audit:docs` scores every page under `docs/` against the repository's ten structural writing checks. `pnpm validate` also runs this audit and verifies local links and heading anchors.
-
-`pnpm build` rebuilds the current version and does not increment it. Read [Contributing](CONTRIBUTING.md) before changing code and [Releasing](docs/development/releasing.md) before changing a version.
+The parser retains zero runtime dependencies. Development dependencies include
+Secretlint and `eslint-plugin-security` for the release security gate. See the
+[contribution guide](CONTRIBUTING.md) for the full command table, bug-fix
+workflows, and test-data rules, and [Releasing](docs/development/releasing.md)
+before changing a version.
 
 ## Support and license
 
-[Report a bug](https://github.com/gkolan/apex-log-insights/issues) with a minimal synthetic or sanitized log. Do not attach production logs without reviewing them for sensitive data.
+Send feedback, questions, or suggestions to [feedback@apexloginsights.com](mailto:feedback@apexloginsights.com).
 
-Licensed under the [MIT License](LICENSE).
+[Report a bug or request a feature](https://github.com/gkolan/apex-log-insights/issues/new/choose). Attach a minimal synthetic or sanitized log; do not attach production logs without reviewing them for sensitive data.
 
-The shared report UI is organized around Triage Summary, Execution Story, Data & Limits, Diagnostics, and Log Explorer. It renders the canonical normalized view model across every host, including execution hierarchy, lifecycle phases, resource trajectories, record and automation evidence, diagnostic attribution, and paged raw-log exploration.
+Licensed under the [MIT License](LICENSE). Vendored third-party code is listed in [third-party notices](THIRD-PARTY-NOTICES.md).

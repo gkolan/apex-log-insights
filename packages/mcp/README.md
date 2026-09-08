@@ -4,20 +4,26 @@ Use this package to let an MCP client request focused Apex debug-log analysis. A
 
 ## Setup
 
-Add to your MCP client config:
+First [build from source](../../docs/user-guides/getting-started.md#build-from-source); public npm installation is not currently verified. Add this to your MCP client's configuration, replacing the path with the absolute path to the built server. On Windows, use forward slashes, for example `C:/projects/apex-log-insights/packages/mcp/dist/server.js`.
+
+The client must be able to find Node.js. Scope the server working directory to the logs you intend to make readable, or send synthetic `logText` for the first check. Tool results go to the client and may reach a cloud model; review [Privacy](#privacy) before using production data.
 
 ```json
 {
   "mcpServers": {
     "apex-log-insights": {
-      "command": "npx",
-      "args": ["-y", "@apex-log-insights/mcp"]
+      "command": "node",
+      "args": [
+        "/absolute/path/to/apex-log-insights/packages/mcp/dist/server.js"
+      ]
     }
   }
 }
 ```
 
 ### Config file locations
+
+Restart or reconnect the client and confirm that the six tools below appear. Try `summarize_log` with synthetic input and `redact: true`. If the server is unavailable, check the Node.js executable, built path, and client error output before retrying.
 
 | Client                        | Config path                                                        |
 | ----------------------------- | ------------------------------------------------------------------ |

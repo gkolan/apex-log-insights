@@ -23,7 +23,7 @@ const DEFAULT_UI_CONFIG = {
     soqlExpandedSubheading:
       "Chronological order (as executed, excluding managed packages)",
     dmlSubheading:
-      "Total records inserted, updated, deleted, or upserted (excluding managed packages)",
+      "Each operation shows the number of affected records (excluding managed packages)",
     issueTopTemplate: "Showing first {count} encountered",
     issueExpandedSubheading: "Showing all",
   },
@@ -239,10 +239,6 @@ const toggleResourceUsageBtn = document.getElementById(
   "toggleResourceUsageBtn",
 );
 const governorLimitsGrid = document.getElementById("governorLimitsGrid");
-const issuesPanel = document.getElementById("issuesPanel");
-const issuesHeading = document.getElementById("issuesHeading");
-const issuesSubheading = document.getElementById("issuesSubheading");
-const issuesTable = document.getElementById("issuesTable");
 const problematicQueriesTable = document.getElementById(
   "problematicQueriesTable",
 );
@@ -317,7 +313,6 @@ const executionTypeFilterSelect = document.getElementById(
 );
 const rawLogPanel = document.getElementById("rawLogPanel");
 const rawLogBody = document.getElementById("rawLogBody");
-const evidencePointersPanel = document.getElementById("evidencePointersPanel");
 const triageSummaryTabLink = document.getElementById("triageSummaryTabLink");
 const executionStoryTabLink = document.getElementById("executionStoryTabLink");
 const dataLimitsTabLink = document.getElementById("dataLimitsTabLink");
@@ -333,16 +328,6 @@ const comparisonRunBtn = document.getElementById("comparisonRunBtn");
 const comparisonExportBtn = document.getElementById("comparisonExportBtn");
 const comparisonStatus = document.getElementById("comparisonStatus");
 const comparisonResults = document.getElementById("comparisonResults");
-const logCompletenessPanel = document.getElementById("logCompletenessPanel");
-const logCompletenessContent = document.getElementById(
-  "logCompletenessContent",
-);
-const logCompletenessHeading = document.getElementById(
-  "logCompletenessHeading",
-);
-const logCompletenessSubheading = document.getElementById(
-  "logCompletenessSubheading",
-);
 let currentComparison = null;
 const schemaBanner = document.getElementById("schemaBanner");
 const schemaBannerText = document.getElementById("schemaBannerText");
@@ -527,15 +512,6 @@ let queriesExpanded = false;
 let allQueriesCount = 0;
 let dmlExpanded = false;
 let allDmlCount = 0;
-let issuesExpanded = false;
-window.toggleIssuesExpanded = () => {
-  issuesExpanded = !issuesExpanded;
-  if (typeof render === "function" && typeof currentReportData !== "undefined")
-    render(
-      currentReportData,
-      typeof rawLineByTextSource !== "undefined" ? rawLineByTextSource : [],
-    );
-};
 let parserWarningsExpanded = false;
 window.toggleParserWarningsExpanded = () => {
   parserWarningsExpanded = !parserWarningsExpanded;
@@ -1148,62 +1124,6 @@ function maybeOpenConfiguredNewTab(link) {
     })
     .catch(() => {});
   return true;
-}
-
-function issueTable(kindClass, rows) {
-  if (!rows || rows.length === 0) return "";
-  const body = rows
-    .map((r) => {
-      const lineNumbers = Array.isArray(r?.lineNumbers)
-        ? r.lineNumbers
-            .map((n) => Number(n))
-            .filter((n) => Number.isFinite(n) && n >= 1)
-        : [];
-      const uniqueLineNumbers = Array.from(new Set(lineNumbers)).sort(
-        (a, b) => a - b,
-      );
-      const lineQuery = String(r?.lineQuery || "").trim();
-      const lineLabel = String(r?.lineLabel || "").trim();
-      const lineNum = Number.isFinite(Number(r?.rawLine))
-        ? Number(r.rawLine)
-        : null;
-      const lineValue = lineNum !== null ? String(lineNum) : "-";
-      const lineDisplay =
-        uniqueLineNumbers.length > 1
-          ? `<div class="issueLineList">${uniqueLineNumbers.map((n) => `<a href="${buildRawLogHref(`log:${n}`)}" class="jumpRawFromQuery" data-line="${n}" title="Open raw debug-log line ${n}">${n}</a>`).join(", ")}</div>`
-          : lineQuery
-            ? `<a href="${buildRawLogHref(lineQuery)}" class="jumpRawFromQuery" data-line-query="${encodeURIComponent(lineQuery)}">${escapeHtml(lineLabel || lineQuery)}</a>`
-            : lineNum !== null
-              ? `<a href="${buildRawLogHref(`log:${lineNum}`)}" class="jumpRawFromQuery" data-line="${lineNum}" title="Open raw debug-log line ${lineNum}">${lineValue}</a>`
-              : "-";
-      return `<tr class="${kindClass}"><td class="copyCell" data-copy-column="issue_message" data-copy-value="${encodeURIComponent(r?.copyValue || r?.nameRaw || "")}" data-icon="copy">${r?.name || "-"}</td><td class="issueTypeCell">${r?.type || "-"}</td><td class="issueLineCell">${lineDisplay}</td></tr>`;
-    })
-    .join("");
-  return `
-    <table class="issueTable">
-      <colgroup>
-        <col class="issueNameCol" />
-        <col class="issueTypeCol" />
-        <col class="issueLineCol" />
-      </colgroup>
-      <thead>
-        <tr><th>Name</th><th>Type</th><th>Log line</th></tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>`;
-}
-
-function buildMockIssueRows(kind, count) {
-  const list = [];
-  for (let i = 1; i <= count; i += 1) {
-    list.push({
-      nameRaw: `${kind.toUpperCase()} mock issue ${i}`,
-      name: `${kind.toUpperCase()} mock issue ${i}`,
-      type: kind === "warning" ? "Warning" : "Exception",
-      rawLine: 100 + i,
-    });
-  }
-  return list;
 }
 
 function pluralizeLabel(count, singular, plural = `${singular}s`) {
@@ -2244,19 +2164,6 @@ function prettifyIssueType(type) {
     .replace(/\bApi\b/g, "API");
 }
 
-function extractIssueSearchTerm(item) {
-  const summary = String(item?.summary || "").trim();
-  const mapMatch = summary.match(/^<Map>\s+([A-Za-z0-9_]+)\s+is empty$/i);
-  if (mapMatch?.[1]) return mapMatch[1];
-  const typedMapMatch = summary.match(
-    /^Map<[^>]+>\s+([A-Za-z0-9_]+)\s+is empty$/i,
-  );
-  if (typedMapMatch?.[1]) return typedMapMatch[1];
-  const colonMatch = summary.match(/^([^:]+):/);
-  if (colonMatch?.[1]) return colonMatch[1].trim();
-  return summary || String(item?.type || "-");
-}
-
 function issueHeading(item) {
   const type = String(item?.type || "").toUpperCase();
   if (type === "RECURSIVE_TRIGGER") return "Recursive Trigger";
@@ -2335,15 +2242,83 @@ function issueEvidenceLines(item, rawLineForEvidence) {
   return values;
 }
 
-function renderIssueFindingBody(item) {
+function renderIssueFindingBody(item, evidenceDetails = "") {
   const summary = escapeHtml(String(item?.summary || item?.type || "Issue"));
   const description = escapeHtml(String(item?.description || ""));
   const action = escapeHtml(issueRecommendedAction(item));
   return `
     <div class="findingSummary">${summary}</div>
     ${description ? `<div class="findingImpact">${description}</div>` : ""}
+    ${evidenceDetails}
     <div class="findingAction"><span class="findingActionLabel">Note:</span> ${action}</div>
   `;
+}
+
+function groupFailureContexts(report) {
+  const failures = Array.isArray(report?.failureContexts)
+    ? report.failureContexts
+    : [];
+  return Array.from(
+    failures
+      .reduce((groups, failure) => {
+        const key = `${String(failure?.type || "Failure")}\u0000${String(failure?.message || "")}`;
+        const existing = groups.get(key);
+        if (existing) existing.occurrences += 1;
+        else groups.set(key, { failure, occurrences: 1 });
+        return groups;
+      }, new Map())
+      .values(),
+  );
+}
+
+function failureContextMatchesIssue(group, item) {
+  const failure = group?.failure || {};
+  const failureMessage = String(failure?.message || "")
+    .trim()
+    .toLowerCase();
+  const issueText =
+    `${String(item?.summary || "")} ${String(item?.description || "")}`
+      .trim()
+      .toLowerCase();
+  if (
+    failureMessage &&
+    issueText &&
+    (issueText.includes(failureMessage) || failureMessage.includes(issueText))
+  ) {
+    return true;
+  }
+  const failureLine = Number(failure?.lineNumber);
+  return (
+    Number.isFinite(failureLine) &&
+    issueEvidenceLines(item, () => null).includes(failureLine)
+  );
+}
+
+function renderFailureContextDetails(group) {
+  const failure = group?.failure || {};
+  const occurrences = Number(group?.occurrences || 1);
+  const events = Array.isArray(failure?.precedingEvents)
+    ? failure.precedingEvents
+    : [];
+  const trail = events
+    .slice(-6)
+    .map((event) => {
+      const label = escapeHtml(String(event?.text || event?.type || "Event"));
+      const line = Number(event?.lineNumber);
+      return Number.isFinite(line)
+        ? `<a class="reportEvidenceLink jumpRawFromQuery" href="${buildRawLogHref(`log:${line}`)}" data-line="${line}">${label}</a>`
+        : `<span>${label}</span>`;
+    })
+    .join('<span aria-hidden="true"> → </span>');
+  return `${
+    occurrences > 1
+      ? `<div class="findingEvidence"><span class="findingActionLabel">Observed:</span> ${escapeHtml(String(occurrences))} matching exception events</div>`
+      : ""
+  }${
+    trail
+      ? `<div class="findingEvidence"><span class="findingActionLabel">Before failure:</span> ${trail}</div>`
+      : ""
+  }`;
 }
 
 function isAggregateEmptyResultMapWarning(item) {
@@ -2417,13 +2392,14 @@ function synthesizeEmptyMapWarningsFromRawLog(rawLogLines, existingIssues) {
   return out;
 }
 
+const COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M 4 16 C 2.9 16 2 15.1 2 14 V 4 C 2 2.9 2.9 2 4 2 H 14 C 15.1 2 16 2.9 16 4"/></svg>`;
+const COPY_ICON_DONE = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+
 function promoteCopyCellsToTd(container) {
   if (!container) return;
-  const wrapped = container.querySelectorAll(
-    "td > .copyCell[data-copy-column]",
-  );
+  const wrapped = container.querySelectorAll("td .copyCell[data-copy-column]");
   wrapped.forEach((wrapper) => {
-    const td = wrapper.parentElement;
+    const td = wrapper.closest("td");
     if (!td) return;
     td.classList.add("copyCell", "copyCellHost");
     td.dataset.copyColumn = wrapper.dataset.copyColumn || "";
@@ -2435,6 +2411,46 @@ function promoteCopyCellsToTd(container) {
     wrapper.removeAttribute("data-copy-value");
     wrapper.removeAttribute("data-icon");
   });
+  container
+    .querySelectorAll("td.copyCell[data-copy-column]")
+    .forEach((cell) => {
+      if (cell.querySelector(".copyCellButton")) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "copyCellButton";
+      button.innerHTML = COPY_ICON;
+      button.setAttribute("aria-live", "polite");
+      const label = String(cell.dataset.copyColumn || "value").replaceAll(
+        "_",
+        " ",
+      );
+      button.title = `Copy ${label}`;
+      button.setAttribute("aria-label", `Copy ${label}`);
+      let resetTimer = null;
+      const resetButton = () => {
+        button.innerHTML = COPY_ICON;
+        button.classList.remove("copied");
+        button.title = `Copy ${label}`;
+        button.setAttribute("aria-label", `Copy ${label}`);
+      };
+      button.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        window.clearTimeout(resetTimer);
+        try {
+          await copyText(decodeURIComponent(cell.dataset.copyValue || ""));
+          button.innerHTML = COPY_ICON_DONE;
+          button.classList.add("copied");
+          button.title = `Copied ${label}`;
+          button.setAttribute("aria-label", `Copied ${label}`);
+        } catch {
+          button.classList.remove("copied");
+          button.title = `Retry copying ${label}`;
+          button.setAttribute("aria-label", `Retry copying ${label}`);
+        }
+        resetTimer = window.setTimeout(resetButton, 1500);
+      });
+      cell.prepend(button);
+    });
 }
 
 function parseUserInfoFromRawLog(lines) {
@@ -4030,7 +4046,6 @@ function setViewModeFromHash() {
   diagnosticsTabLink?.classList.toggle("activeTab", diagnosticsMode);
   logExplorerTabLink?.classList.toggle("activeTab", rawMode);
   if (rawLogPanel) rawLogPanel.hidden = !rawMode;
-  if (evidencePointersPanel) evidencePointersPanel.hidden = !rawMode;
   if (rawMode) {
     const hashQuery = getRawLogQueryFromHash(hash);
     if (hashQuery) {
@@ -4297,82 +4312,11 @@ function renderOverviewPanel(target, report) {
   });
 }
 
-function renderLogCompleteness(report) {
-  if (!logCompletenessPanel || !logCompletenessContent) return;
-  const completeness = report?.metadata?.logCompleteness;
-  const failures = Array.isArray(report?.failureContexts)
-    ? report.failureContexts
-    : [];
-  const status = String(completeness?.status || "unknown");
-  const hasQualityWarning = status !== "complete";
-  if (!hasQualityWarning && failures.length === 0) {
-    logCompletenessPanel.hidden = true;
-    return;
-  }
-  logCompletenessPanel.hidden = false;
-  if (logCompletenessHeading) {
-    logCompletenessHeading.textContent = hasQualityWarning
-      ? failures.length > 0
-        ? "Log quality and failure context"
-        : "Log quality warning"
-      : "Failure context";
-  }
-  if (logCompletenessSubheading) {
-    logCompletenessSubheading.textContent = hasQualityWarning
-      ? "Some conclusions may be incomplete because the recorded log has missing or uncertain evidence."
-      : "Recorded events immediately before the captured failure.";
-  }
-  const statusLabel =
-    status === "incomplete"
-      ? "Evidence is incomplete"
-      : "Evidence completeness is uncertain";
-  const reasons = Array.isArray(completeness?.reasons)
-    ? completeness.reasons
-    : [];
-  const groupedFailures = Array.from(
-    failures
-      .reduce((groups, failure) => {
-        const key = `${String(failure?.type || "Failure")}\u0000${String(failure?.message || "")}`;
-        const existing = groups.get(key);
-        if (existing) existing.occurrences += 1;
-        else groups.set(key, { failure, occurrences: 1 });
-        return groups;
-      }, new Map())
-      .values(),
-  );
-  const failureMarkup = groupedFailures
-    .slice(0, 3)
-    .map(({ failure, occurrences }) => {
-      const events = Array.isArray(failure?.precedingEvents)
-        ? failure.precedingEvents
-        : [];
-      const trail = events
-        .slice(-6)
-        .map((event) => {
-          const label = escapeHtml(
-            String(event?.text || event?.type || "Event"),
-          );
-          const line = Number(event?.lineNumber);
-          return Number.isFinite(line)
-            ? `<a href="${buildRawLogHref(`log:${line}`)}" aria-label="${escapeHtml(`Log line ${line}: ${String(event?.text || event?.type || "Event")}`)}">${label}</a>`
-            : `<span>${label}</span>`;
-        })
-        .join('<span aria-hidden="true"> → </span>');
-      return `<div class="failure-context"><strong>${escapeHtml(String(failure?.type || "Failure"))}</strong>${occurrences > 1 ? `<span class="metaPill">Observed ${occurrences} times</span>` : ""}<p>${escapeHtml(String(failure?.message || "No failure message was captured."))}</p>${trail ? `<div class="failure-trail" aria-label="Events before failure">${trail}</div>` : ""}</div>`;
-    })
-    .join("");
-  const qualityMarkup = hasQualityWarning
-    ? `<div class="completeness-status completeness-status--${escapeHtml(status)}"><strong>${statusLabel}</strong><span>Transaction start: ${completeness?.hasExecutionStart ? "found" : "missing"}; transaction finish: ${completeness?.hasExecutionFinish ? "found" : "missing"}.</span></div>${reasons.length ? `<ul>${reasons.map((reason) => `<li>${escapeHtml(String(reason))}</li>`).join("")}</ul>` : ""}`
-    : "";
-  logCompletenessContent.innerHTML = `${qualityMarkup}${failureMarkup ? `<h3>Events before failure</h3>${failureMarkup}` : ""}`;
-}
-
 function render(report, rawLogLines = []) {
   if (report !== currentReportData) {
     prettyPayloadCache.clear();
   }
   currentReportData = report;
-  renderLogCompleteness(report);
   const context = getReportContext(report);
   const entryPoint = getReportEntryPoint(report);
   const execution = getReportExecution(report);
@@ -4620,94 +4564,6 @@ function render(report, rawLogLines = []) {
   ) {
     expandedScopeGroupKeys.add(scopeIdGroups[0].key);
   }
-  const issueRows = (items) =>
-    (issuesExpanded ? items : items.slice(0, 200)).map((item) => ({
-      nameRaw: String(item?.summary || item?.type || "-"),
-      name: escapeHtml(item?.summary || item?.type || "-"),
-      copyValue: extractIssueSearchTerm(item),
-      type: escapeHtml(
-        prettifyIssueType(
-          item?.type || (isWarningItem(item) ? "Warning" : "Exception"),
-        ),
-      ),
-      rawLine: rawLineForEvidence(
-        item?.evidence?.raw,
-        item?.evidence?.lineNumber,
-      ),
-      lineQuery: (() => {
-        const nums = Array.isArray(item?.evidence?.rawLogLineNumbers)
-          ? item.evidence.rawLogLineNumbers
-              .map((n) => Number(n))
-              .filter((n) => Number.isFinite(n) && n >= 1)
-          : [];
-        const unique = Array.from(new Set(nums)).sort((a, b) => a - b);
-        if (unique.length > 1) return `lines:${unique.join(",")}`;
-        return "";
-      })(),
-      lineLabel: (() => {
-        const nums = Array.isArray(item?.evidence?.rawLogLineNumbers)
-          ? item.evidence.rawLogLineNumbers
-              .map((n) => Number(n))
-              .filter((n) => Number.isFinite(n) && n >= 1)
-          : [];
-        const unique = Array.from(new Set(nums)).sort((a, b) => a - b);
-        if (unique.length > 1) return unique.join(", ");
-        return "";
-      })(),
-      lineNumbers: (() => {
-        const nums = Array.isArray(item?.evidence?.rawLogLineNumbers)
-          ? item.evidence.rawLogLineNumbers
-              .map((n) => Number(n))
-              .filter((n) => Number.isFinite(n) && n >= 1)
-          : [];
-        return Array.from(new Set(nums)).sort((a, b) => a - b);
-      })(),
-    }));
-  const useMockIssues = false;
-  const mockIssueCount = Math.max(
-    1,
-    Number(uiConfig.mock.issueMockCount || 10),
-  );
-  const errorRows =
-    errors.length > 0
-      ? issueRows(errors)
-      : useMockIssues
-        ? buildMockIssueRows("error", mockIssueCount)
-        : [];
-  const warningRows =
-    warnings.length > 0
-      ? issueRows(warnings)
-      : useMockIssues
-        ? buildMockIssueRows("warning", mockIssueCount)
-        : [];
-  const totalIssueCount = errorRows.length + warningRows.length;
-
-  if (issuesPanel) issuesPanel.hidden = totalIssueCount === 0;
-  if (issuesSubheading) {
-    issuesSubheading.textContent =
-      totalIssueCount === 0
-        ? ""
-        : `${errorRows.length} error${errorRows.length !== 1 ? "s" : ""} · ${warningRows.length} warning${warningRows.length !== 1 ? "s" : ""}`;
-  }
-  if (issuesTable) {
-    if (totalIssueCount === 0) {
-      setHtml(issuesTable, "<p>No issues were reported.</p>");
-    } else {
-      let html =
-        issueTable("issueError", errorRows) +
-        issueTable("issueWarn", warningRows);
-      const totalRawCount = errors.length + warnings.length;
-      if (totalRawCount > 200) {
-        html += `<div class="actionRow" style="margin-top:8px;"><button type="button" class="actionBtn" data-toggle-issues-expanded>${issuesExpanded ? "Show fewer" : `Show all (${escapeHtml(String(totalRawCount))})`}</button></div>`;
-      }
-      setHtml(issuesTable, html);
-      issuesTable
-        .querySelector("[data-toggle-issues-expanded]")
-        ?.addEventListener("click", () => window.toggleIssuesExpanded());
-    }
-    promoteCopyCellsToTd(issuesTable);
-  }
-
   renderCardGrid(
     triageSnapshotGrid,
     [
@@ -4757,8 +4613,8 @@ function render(report, rawLogLines = []) {
           [
             pluralizeLabel(
               database.dml.length,
-              "DML Statement",
-              "DML Statements",
+              "DML Operation",
+              "DML Operations",
             ),
             pluralizeLabel(dmlRows, "Row Written", "Rows Written"),
           ],
@@ -4806,26 +4662,74 @@ function render(report, rawLogLines = []) {
     verdictPanel.hidden = false;
   }
 
-  renderRichList(
-    triageHighlightsList,
-    evidenceBackedIssues.slice(0, 5).map((item) => {
-      const lineNumbers = issueEvidenceLines(item, rawLineForEvidence);
-      const lineText =
-        lineNumbers.length > 0
-          ? `<span class="findingLineInline">at ${lineNumbers.length === 1 ? "log line" : "log lines"} ${lineNumbers.map((line) => `<a class="reportEvidenceLink jumpRawFromQuery" href="${buildRawLogHref(`log:${line}`)}" data-line="${line}">${line}</a>`).join(", ")}</span>`
-          : "";
+  const failureGroups = groupFailureContexts(report);
+  const matchedFailureGroups = new Set();
+  const issueTriageItems = evidenceBackedIssues.map((item) => {
+    const lineNumbers = issueEvidenceLines(item, rawLineForEvidence);
+    const lineText =
+      lineNumbers.length > 0
+        ? `<span class="findingLineInline">at ${lineNumbers.length === 1 ? "log line" : "log lines"} ${lineNumbers.map((line) => `<a class="reportEvidenceLink jumpRawFromQuery" href="${buildRawLogHref(`log:${line}`)}" data-line="${line}">${line}</a>`).join(", ")}</span>`
+        : "";
+    const failureGroup = failureGroups.find((group) => {
+      if (matchedFailureGroups.has(group)) return false;
+      return failureContextMatchesIssue(group, item);
+    });
+    if (failureGroup) matchedFailureGroups.add(failureGroup);
+    return {
+      title: `<span class="reportIssueTitleIcon">${issueIcon(item)}</span><span class="reportIssueTitleText">${escapeHtml(issueHeading(item))} ${lineText}</span>`,
+      body: renderIssueFindingBody(
+        item,
+        failureGroup ? renderFailureContextDetails(failureGroup) : "",
+      ),
+    };
+  });
+  const unmatchedFailureItems = failureGroups
+    .filter((group) => !matchedFailureGroups.has(group))
+    .map((group) => {
+      const failure = group.failure || {};
+      const line = Number(failure?.lineNumber);
+      const lineText = Number.isFinite(line)
+        ? `<span class="findingLineInline">at log line <a class="reportEvidenceLink jumpRawFromQuery" href="${buildRawLogHref(`log:${line}`)}" data-line="${line}">${line}</a></span>`
+        : "";
+      const item = {
+        type: failure?.type || "EXCEPTION_THROWN",
+        summary: failure?.message || "A failure was captured.",
+      };
       return {
         title: `<span class="reportIssueTitleIcon">${issueIcon(item)}</span><span class="reportIssueTitleText">${escapeHtml(issueHeading(item))} ${lineText}</span>`,
-        body: renderIssueFindingBody(item),
+        body: renderIssueFindingBody(item, renderFailureContextDetails(group)),
       };
-    }),
+    });
+  const completeness = report?.metadata?.logCompleteness;
+  const completenessStatus = String(completeness?.status || "unknown");
+  const completenessReasons = Array.isArray(completeness?.reasons)
+    ? completeness.reasons
+    : [];
+  const qualityItems =
+    completenessStatus === "complete"
+      ? []
+      : [
+          {
+            title: `<span class="reportIssueTitleIcon">${issueIcon({ type: "PARSING_ERROR" })}</span><span class="reportIssueTitleText">Log Quality Warning</span>`,
+            body: `<div class="findingSummary">Some conclusions may be incomplete because the recorded log has missing or uncertain evidence.</div>${completenessReasons.map((reason) => `<div class="findingEvidence">${escapeHtml(String(reason))}</div>`).join("")}`,
+          },
+        ];
+  const triageItems = [
+    ...issueTriageItems,
+    ...unmatchedFailureItems,
+    ...qualityItems,
+  ].slice(0, 5);
+
+  renderRichList(
+    triageHighlightsList,
+    triageItems,
     "No evidence-backed findings were emitted for this report.",
     { grouped: true },
   );
 
   if (triageHighlightsPanel) {
     triageHighlightsPanel.hidden =
-      issues.length === 0 && namespaces.length === 0;
+      triageItems.length === 0 && namespaces.length === 0;
   }
 
   const executionHotspots = traceEvents
@@ -5180,6 +5084,7 @@ function render(report, rawLogLines = []) {
       buildRichDiagnosticsMarkup(report, window.diagState),
     );
     bindDiagButtons(diagnosticsPanel);
+    promoteCopyCellsToTd(diagnosticsPanel);
   }
 
   if (diagnosticsPanel) {
@@ -5484,6 +5389,7 @@ window.toggleDiagSection = function (key) {
       buildRichDiagnosticsMarkup(currentReportData, window.diagState),
     );
     bindDiagButtons(diagnosticsPanel);
+    promoteCopyCellsToTd(diagnosticsPanel);
   }
 };
 

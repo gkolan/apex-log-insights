@@ -1,8 +1,8 @@
 # Browser-extension releases
 
-This folder contains installable browser-extension packages produced by the release build. Packages are grouped by browser so users can identify the correct file without opening an archive.
+This folder contains browser-extension build archives for release review and temporary development loading. Packages are grouped by browser so users can identify the correct file without opening an archive.
 
-Read [Apex Log Insights 1.2.0](1.2.0.md) for the features, parser corrections, privacy boundaries, known limitations, validation results, and review packages included in this release.
+Read [Apex Log Insights 1.2.0](1.2.0.md) for the features, parser corrections, privacy boundaries, known limitations, and candidate packages included in this release.
 
 ## Choose a package
 

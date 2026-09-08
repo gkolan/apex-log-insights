@@ -363,22 +363,30 @@ border-radius: 10px;
 
 Key tokens:
 
-| Token                         | Value             | Use for                    |
-| ----------------------------- | ----------------- | -------------------------- |
-| `--bg`                        | `#f3f4f6`         | Page background            |
-| `--surface`                   | `#ffffff`         | Card / panel surface       |
-| `--ink`                       | `#111827`         | Primary text               |
-| `--ink-secondary`             | `#374151`         | Secondary text             |
-| `--muted`                     | `#6b7280`         | Muted / helper text        |
-| `--accent`                    | `#2563eb`         | Links, buttons, highlights |
-| `--accent-hover`              | `#1d4ed8`         | Hover state for accent     |
-| `--error-bg` / `--error-text` |                   | Error states               |
-| `--warn-bg` / `--warn-text`   |                   | Warning states             |
-| `--ok-bg` / `--ok-text`       |                   | Success/ok states          |
-| `--panel-radius`              | `10px`            | Card border radius         |
-| `--max-width`                 | `1180px`          | Main content max-width     |
-| `--font-sans`                 | system font stack | Body text                  |
-| `--font-mono`                 | monospace stack   | Code, log lines            |
+| Token                         | Value             | Use for                 |
+| ----------------------------- | ----------------- | ----------------------- |
+| `--bg`                        | `#f3f3f3`         | Page background         |
+| `--surface`                   | `#ffffff`         | Card / panel surface    |
+| `--ink`                       | `#202020`         | Primary text            |
+| `--ink-secondary`             | `#2e2e2e`         | Secondary text          |
+| `--muted`                     | `#5c5c5c`         | Muted / helper text     |
+| `--accent`                    | `#0066cc`         | Links and focus accents |
+| `--accent-hover`              | `#0066cc`         | Hover state for accent  |
+| `--error-bg` / `--error-text` |                   | Error states            |
+| `--warn-bg` / `--warn-text`   |                   | Warning states          |
+| `--ok-bg` / `--ok-text`       |                   | Success/ok states       |
+| `--panel-radius`              | `0.5rem`          | Card border radius      |
+| `--max-width`                 | `1180px`          | Main content max-width  |
+| `--font-sans`                 | system font stack | Body text               |
+| `--font-mono`                 | monospace stack   | Code, log lines         |
+
+Pair `--match-bg` with `--match-text` and `--button-bg` with `--button-text`.
+Use neutral surfaces and text; reserve blue for links and focus accents. Give
+fields explicit text, caret, and placeholder colors. Do not fade whole log rows:
+context and line numbers must remain readable in both themes. Let forced colors
+use the system palette. Check computed contrast in each host after changing a
+foreground, background, opacity, or theme override; see the
+[rendered accessibility checks](docs/development/testing.md#check-rendered-accessibility).
 
 ### 5.2 BEM-style class names
 

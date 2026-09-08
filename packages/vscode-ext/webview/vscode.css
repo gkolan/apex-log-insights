@@ -1,32 +1,55 @@
 :root,
 :root[data-theme="dark"],
 :root[data-theme="light"] {
-  color-scheme: light dark;
   --bg: var(--vscode-editor-background);
   --surface: var(--vscode-sideBar-background);
   --surface-subtle: var(--vscode-editorWidget-background);
   --surface-soft: var(--vscode-editorWidget-background);
-  --surface-muted: var(--vscode-list-inactiveSelectionBackground);
+  --surface-muted: var(--vscode-list-hoverBackground);
   --ink: var(--vscode-editor-foreground);
   --ink-secondary: var(--vscode-descriptionForeground);
   --muted: var(--vscode-descriptionForeground);
   --text-muted: var(--vscode-descriptionForeground);
-  --faint: var(--vscode-disabledForeground);
-  --line: var(--vscode-panel-border);
+  --faint: var(--vscode-descriptionForeground);
+  --line: var(--vscode-descriptionForeground);
   --line-light: var(--vscode-widget-border, var(--vscode-panel-border));
   --accent: var(--vscode-textLink-foreground);
   --accent-hover: var(--vscode-textLink-activeForeground);
   --accent-light: var(--vscode-list-hoverBackground);
   --accent-border: var(--vscode-focusBorder);
   --error-accent: var(--vscode-errorForeground);
-  --error-text: var(--vscode-errorForeground);
+  --error-text: var(--ink);
+  --error-bg: var(--surface-muted);
   --warn-accent: var(--vscode-editorWarning-foreground);
-  --warn-text: var(--vscode-editorWarning-foreground);
-  --ok-text: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen));
+  --warn-text: var(--ink);
+  --warn-bg: var(--surface-muted);
+  --ok-text: var(--ink);
+  --ok-bg: var(--surface-muted);
+}
+
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+}
+
+body.vscode-dark,
+body.vscode-high-contrast {
+  color-scheme: dark;
 }
 
 body {
   background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  accent-color: var(--vscode-editor-foreground);
+}
+
+.schemaBanner {
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-editor-foreground);
+  border-color: var(--vscode-editorWarning-foreground);
+}
+
+.redactNameList {
   color: var(--vscode-editor-foreground);
 }
 
@@ -41,15 +64,30 @@ body {
   outline-offset: 2px;
 }
 
+.rawSearchBtn,
+.redactionToggleBtn,
+.redactSaveBtn,
+.vscodeRefreshAnalysis {
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid
+    var(
+      --vscode-button-border,
+      var(--vscode-panel-border, var(--vscode-disabledForeground))
+    );
+}
+
 .vscodeRefreshAnalysis {
   margin-inline-start: 0.75rem;
-  border: 0;
   padding: 0.3rem 0.65rem;
-  color: var(--vscode-button-foreground);
-  background: var(--vscode-button-background);
   cursor: pointer;
 }
 
+.rawSearchBtn:hover,
+.redactionToggleBtn:hover,
+.redactSaveBtn:hover,
 .vscodeRefreshAnalysis:hover {
-  background: var(--vscode-button-hoverBackground);
+  background: var(--vscode-list-hoverBackground);
+  color: var(--vscode-editor-foreground);
+  filter: none;
 }

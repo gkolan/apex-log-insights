@@ -2,7 +2,23 @@
 
 Use this standard when creating or revising project documentation, package guides, store copy, labels, descriptions, help text, changelogs, or change summaries. The goal is to help a defined reader complete a task and verify the result without searching several pages.
 
-This standard applies the project [writing guide](writing-guide.md) and the naming principles in the Record Health Check Salesforce naming and metadata writing standard. The current implementation, official Salesforce terminology, and current platform schemas take precedence when they change.
+This contributor standard adapts Record Health Check's reader-first documentation rules to Apex Log Insights. Use it with the project [writing guide](writing-guide.md) and [terminology](../reference/terminology.md). Verify product facts against the implementation, package manifest, or publication record that owns them, not another documentation page alone.
+
+## Read before editing
+
+Read the complete page and follow its local links before changing it. Identify the intended reader, the task or lookup need, and the observable result. Check that each linked prerequisite is available before the step that needs it.
+
+Review one page at a time. Verify names, commands, defaults, input limits, storage, permissions, and supported environments against their owning source. Mark an unresolved claim as unverified rather than filling the gap with an assumption.
+
+## Keep user guidance separate from contributor checks
+
+User guides, package READMEs, public API references, and store descriptions explain how to use the product. Keep editorial scores, audit tables, reviewer instructions, build-gate results, and draft approval questions out of those pages. Instructions for checking a user's own analysis or recovering from an error belong there when they help complete the task.
+
+Reusable release procedures, documentation standards, test commands, and submission checklists belong in contributor documentation. Route readers to them through clearly labeled contributor navigation, not as the normal next step after analyzing a log.
+
+Keep point-in-time reviews, implementation plans, raw audit output, artifact hashes, and runtime verification records under ignored `internal/` or `reports/`. Preserve existing evidence when moving it out of public docs. Public screenshots may retain concise provenance, synthetic-input details, captions, and alt text; test transcripts and pass/fail matrices remain local.
+
+Git ignore rules do not remove already tracked files. Check both the Git index and final archives before release. Maintainable checks and their fixtures remain tracked; generated evidence does not. Browser release archives under `docs/releases/` are an intentional distribution exception, not a location for audit reports.
 
 ## Open with purpose and outcome
 
@@ -26,6 +42,10 @@ Put information in the order needed to act:
 6. related tasks.
 
 Reference pages may start with a contract table. Checklists may start with the condition that triggers the checklist. Historical pages such as the changelog keep chronological structure.
+
+Choose a structure that fits the page. A task guide needs prerequisites, ordered steps, expected results, and recovery. A reference needs exact inputs, outputs, defaults, and limits. An overview helps readers choose a path. Avoid invented personas and repetitive sections added only to satisfy a template.
+
+The page should pass the single-link test: a reader arriving directly can understand when it applies and complete its main task without hidden repository knowledge. Link to optional depth, but explain any prerequisite or decision needed at the current step.
 
 ## Keep one source for each topic
 
@@ -63,11 +83,19 @@ For every command or configuration example:
 - show the observable success condition;
 - verify that the command exists before publishing.
 
+Prefer cross-platform project commands. Label Bash-only examples and explain that Windows readers need Git Bash, or supply a PowerShell equivalent. Put warnings about publication, credentials, network access, or destructive changes before the action. State where each example input comes from and use synthetic or reviewed sanitized logs.
+
+For a limit, explain the unit, what happens at the boundary, and how to reduce or split the input. For a task, describe both successful completion and a relevant failure or access outcome, with a safe recovery path.
+
 Use placeholders that describe the required value, such as `<path-to-log>`. Do not publish a placeholder that looks like a real credential, Salesforce ID, domain, or customer value.
 
 ## Separate shipped behavior from plans
 
-Use present tense only for behavior available in the current repository or release. Label proposals as exploratory and keep prioritization in GitHub issues. Do not let a roadmap page masquerade as an API or feature reference.
+Distinguish source support, a locally built release candidate, a publicly downloadable artifact, and a published store or npm version. A successful build does not establish public availability. Keep the current installation status in [Getting started](../user-guides/getting-started.md#availability) and link to it rather than copying mutable version claims into every guide.
+
+Use a verified install URL when saying an interface is available. Label an unsigned Firefox XPI as a submission or temporary-development artifact. Describe a local VSIX as a candidate until a public download or Marketplace installation has been verified. Source-only npm packages need source-build instructions rather than an unqualified registry install command.
+
+Keep proposals and prioritization in issues or local design material. Compatibility claims name the host and known limitations. A skipped check, a past release review, or an untested remote workspace does not establish support for the current artifact.
 
 ## State privacy boundaries completely
 
@@ -99,11 +127,19 @@ Then review the rendered page and confirm:
 - planned behavior is marked as planned;
 - the page ends with a useful result, limitation, or next action.
 
+Review facts and prose in separate passes. Read every changed page from title to final link after the last material edit, then read the affected folder in navigation order. Remove contradictions and duplicate procedures without removing information needed to use an individual page.
+
+For a new or substantially changed task, exercise the documented path in the stated environment when authorized, including the expected outcome and a relevant recovery path. Record what was actually checked and what remains unverified in local evidence. Link and structure checks do not substitute for runtime or editorial review.
+
+Inspect package-rendered documentation as well as source Markdown. Marketplace packaging can rewrite relative README links incorrectly; use repository-absolute HTTPS links in the VS Code README and check the resulting VSIX. Keep browser store copy browser-neutral except where a host-specific capability or permission differs.
+
 `pnpm check:docs` also enforces one page title, a substantive opening, ordered
 headings, concise paragraphs, readable tables, labeled code fences, valid local
 links and heading anchors, a final navigation section, and prose without em
 dashes. Each maintained page under `docs/` must pass all ten structural checks.
 The automated result does not replace a factual or editorial review.
+
+The link checker also rejects known reviewer-only headings in user pages and links to local evidence. It checks package-safe VS Code README links and resolves this repository's absolute GitHub documentation URLs against the current source. These checks prevent known regressions; editorial review still decides whether each paragraph belongs with its audience.
 
 ## Related
 

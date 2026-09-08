@@ -224,7 +224,8 @@ it("extension popup can clear cached logs without deleting preferences", async (
   );
 
   expect(popupHtml).toMatch(/id="clearCachedLogsBtn"/);
-  expect(popupJs).toMatch(/\^apex-\(\?:log\|new-tab-state\)-\\d\+\$/);
+  expect(popupJs).toContain("log-\\d+(?:-[a-z0-9]{6})?");
+  expect(popupJs).toContain("new-tab-state-\\d+(?:-[a-z0-9]{8})?");
   expect(popupJs).not.toMatch(/key\.startsWith\("apex-log-"\)/);
   expect(popupJs).toMatch(/chrome\.storage\.local\.remove\(cachedKeys\)/);
   expect(popupJs).not.toMatch(/chrome\.storage\.local\.clear\(/);
@@ -233,7 +234,9 @@ it("extension popup can clear cached logs without deleting preferences", async (
     "apex-log-insights-theme",
   ]) {
     expect(
-      new RegExp("^apex-(?:log|new-tab-state)-\\d+$").test(preferenceKey),
+      new RegExp(
+        "^apex-(?:log-\\d+(?:-[a-z0-9]{6})?|new-tab-state-\\d+(?:-[a-z0-9]{8})?)$",
+      ).test(preferenceKey),
     ).toBe(false);
   }
 });
