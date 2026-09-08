@@ -29,8 +29,10 @@ assets change, a viewer/extension compatibility assertion.
 pnpm validate
 ```
 
-The command checks formatting, lint, TypeScript, all active Vitest tests,
-version synchronization, and documentation. A skipped test must identify a
+The command builds the shared core type declarations before checking TypeScript,
+then checks formatting, lint, all active Vitest tests, version synchronization,
+and documentation. This makes the same command work in a fresh clone with no
+generated `dist/` directories. A skipped test must identify a
 specific unavailable prerequisite or tracked issue; do not use a skip to hide a
 regression.
 

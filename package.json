@@ -41,7 +41,7 @@
     "lint": "eslint packages/*/src packages/vscode-ext/scripts packages/vscode-ext/webview scripts viewer packages/browser-ext/shared vitest.config.mts",
     "format": "node --import tsx scripts/format-maintained.ts --write",
     "format:check": "node --import tsx scripts/format-maintained.ts --check",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter @apex-log-insights/core build && pnpm -r typecheck",
     "test": "vitest run",
     "test:vscode": "pnpm --dir packages/vscode-ext build && pnpm --dir packages/vscode-ext test:host",
     "test:coverage": "vitest run --coverage",

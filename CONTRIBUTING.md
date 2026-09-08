@@ -77,7 +77,7 @@ Fix the lowest layer that first becomes incorrect. Do not add renderer logic to 
 
 1. Prettier check for Git-discovered maintained non-UI sources and documentation;
 2. ESLint;
-3. TypeScript checks for all packages;
+3. Build the shared core type declarations, then run TypeScript checks for all packages;
 4. all active Vitest tests;
 5. version synchronization;
 6. documentation consistency, local-link and heading-anchor checks, and the 10/10 structural writing audit.

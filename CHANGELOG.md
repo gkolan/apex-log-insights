@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pnpm validate` now builds the shared core type declarations before package typechecking, preventing clean GitHub Actions checkouts from failing when the VS Code extension resolves `@apex-log-insights/core`.
 - Added the required Chrome promotional tile and a reproducible Firefox reviewer source archive so browser-store submissions include the assets and source materials required for review.
 - Removed the unused `scripting` permission from Firefox while retaining it for the user-enabled Chrome and Edge file sidebar.
 - Added current Firefox reviewer instructions and submission checks that replace stale store copy and reproduce the bundled worker from the attached source archive.
