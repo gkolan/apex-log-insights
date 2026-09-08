@@ -51,7 +51,7 @@
     "check:version-sync": "node --import tsx scripts/check-version-sync.ts",
     "check:docs": "node --import tsx scripts/check-docs.ts && node --import tsx scripts/audit-docs.ts",
     "audit:docs": "node --import tsx scripts/audit-docs.ts",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:version-sync && pnpm check:docs",
+    "validate": "pnpm export:extension:ui && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:version-sync && pnpm check:docs",
     "build": "pnpm -r build && pnpm run export:extension",
     "export:extension": "node --import tsx scripts/export-extension.ts",
     "export:extension:ui": "node --import tsx scripts/assemble-extension-ui.ts",

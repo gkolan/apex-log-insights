@@ -75,12 +75,13 @@ Fix the lowest layer that first becomes incorrect. Do not add renderer logic to 
 
 `pnpm validate` runs, in order:
 
-1. Prettier check for Git-discovered maintained non-UI sources and documentation;
-2. ESLint;
-3. Build the shared core type declarations, then run TypeScript checks for all packages;
-4. all active Vitest tests;
-5. version synchronization;
-6. documentation consistency, local-link and heading-anchor checks, and the 10/10 structural writing audit.
+1. Assemble the generated browser UI from the canonical viewer sources;
+2. Prettier check for Git-discovered maintained non-UI sources and documentation;
+3. ESLint;
+4. build the shared core type declarations, then run TypeScript checks for all packages;
+5. all active Vitest tests;
+6. version synchronization;
+7. documentation consistency, local-link and heading-anchor checks, and the 10/10 structural writing audit.
 
 All steps must pass before a commit. Skipped tests must identify an issue or a concrete missing prerequisite; do not use skips to hide a regression.
 

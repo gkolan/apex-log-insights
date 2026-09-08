@@ -18,7 +18,7 @@ Keep one-off review records and artifact hashes in ignored `internal/` or `repor
    pnpm bugs:report
    ```
 
-   A stable release requires all four commands to finish successfully, `pnpm audit:report` to write zero issues, and `pnpm bugs:report` to write zero issues. `pnpm validate` builds the shared core type declarations, so it also works before a full build in a fresh clone. The bug report checks built package bundles, so run it after `pnpm build`.
+   A stable release requires all four commands to finish successfully, `pnpm audit:report` to write zero issues, and `pnpm bugs:report` to write zero issues. `pnpm validate` assembles the shared browser UI and builds the core type declarations, so it also works before a full build in a fresh clone. The bug report checks built package bundles, so run it after `pnpm build`.
 
 4. For parser, report, normalizer, renderer, or large-log changes, run the
    optional external compatibility gate while the pinned public sample is
