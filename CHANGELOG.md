@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Installation docs now link to the published VS Code Marketplace listing instead of describing the extension as unpublished.
+
 ### Fixed
 
 - `pnpm validate` now assembles the generated browser UI and builds the shared core type declarations, preventing clean GitHub Actions checkouts from failing on missing extension assets or when the VS Code extension resolves `@apex-log-insights/core`.

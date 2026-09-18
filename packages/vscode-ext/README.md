@@ -6,7 +6,7 @@ Analyze a Salesforce Apex debug log beside its source file. Apex Log Insights op
 
 Use desktop VS Code 1.96 or later and a readable `.log` file no larger than 25 MiB. Browser-hosted VS Code and virtual workspaces are not supported. No Salesforce credentials or separate local server are required.
 
-The extension is a source-build release candidate, not a verified Marketplace release. See [installation availability and source-build steps](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/getting-started.md#vs-code-extension) to obtain a local VSIX. Installing an existing VSIX does not require Node.js or pnpm.
+Install it from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=apex-log-insights.apex-log-insights), or see [installation and source-build steps](https://github.com/gkolan/apex-log-insights/blob/main/docs/user-guides/getting-started.md#vs-code-extension) to build a local VSIX. Installing the extension does not require Node.js or pnpm.
 
 The packaged VSIX includes `THIRD-PARTY-NOTICES.md` with the license terms for
 the vendored parser code.

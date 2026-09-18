@@ -22,7 +22,7 @@ Browser stores and repository builds can contain different versions. This guide 
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Chrome and Firefox                | Public store listings are available; the listings retrieved showed Chrome 1.1.22 and Firefox 1.1.34.    |
 | Edge                              | Public store listing is available; its current version was not exposed by the listing check.            |
-| VS Code                           | A local 1.2.0 VSIX candidate can be built. The expected Marketplace listing was not available.          |
+| VS Code                           | Public Marketplace listing is available; a local VSIX can also be built from source.                    |
 | CLI, core library, and MCP server | Available from source. The public npm registry did not return a latest release for these package names. |
 
 The browser archives in this repository are 1.2.0 candidates, not proof of store publication. The Firefox candidate is unsigned and is for submission or temporary development loading. Browser users do not need Node.js or pnpm.
@@ -50,17 +50,17 @@ The extension does not upload logs. Browser store update checks are handled by t
 
 ## VS Code extension
 
-The VS Code extension is available as a local `1.2.0` release candidate. It has not been published to the Visual Studio Marketplace.
+Install **Apex Log Insights** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=apex-log-insights.apex-log-insights), or search for it in the VS Code Extensions view.
 
-1. Follow [Build from source](#build-from-source), then run `pnpm --filter ./packages/vscode-ext package:vsix` from the repository root. This writes `packages/vscode-ext/apex-log-insights.vsix` without publishing it.
-2. In VS Code, run **Extensions: Install from VSIX…**.
+1. Install the extension. To build it locally instead, follow [Build from source](#build-from-source), run `pnpm --filter ./packages/vscode-ext package:vsix` from the repository root, and use **Extensions: Install from VSIX…** on `packages/vscode-ext/apex-log-insights.vsix`.
+2. Reload VS Code if prompted.
 3. Open a Salesforce Apex debug log whose file name ends in `.log`.
 4. Run **Apex Log Insights: Analyze Active Log**, select **Analyze with Apex Log Insights** above a detected log, or use the Explorer context menu.
 5. Select a **Log line** in the report to reveal that exact line in the source editor.
 
 If the source changes, select **Refresh Analysis** in the stale-report notice. Unsaved editor text is analyzed without saving it. Parsing occurs in the workspace extension host, so Remote SSH and Dev Containers process the log in that remote environment.
 
-The five report views should open beside the selected log. If the command is missing, confirm the VSIX is installed and enabled in the current workspace, then reload VS Code. See the [VS Code package guide](../../packages/vscode-ext/README.md) for limits, privacy details, and the supported-host boundary.
+The five report views should open beside the selected log. If the command is missing, confirm the extension is installed and enabled in the current workspace, then reload VS Code. See the [VS Code package guide](../../packages/vscode-ext/README.md) for limits, privacy details, and the supported-host boundary.
 
 ## Build from source
 

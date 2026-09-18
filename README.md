@@ -8,14 +8,12 @@ Log processing is local. The MCP server also parses locally, but its structured 
 
 ## Installation
 
-| Platform | Install                                                                                                                        | Status            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
-| Chrome   | [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp)                | Available         |
-| Edge     | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian) | Available         |
-| Firefox  | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/)                                           | Available         |
-| VS Code  | [Build from source](docs/user-guides/getting-started.md#vs-code-extension)                                                     | Not published yet |
-
-<!-- Publish the VS Code extension, then swap its row to: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=apex-log-insights.apex-log-insights) | Available -->
+| Platform | Install                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Chrome   | [Chrome Web Store](https://chromewebstore.google.com/detail/apex-log-insights/mkgfpohljhagepglolcabmnhhiipicdp)                |
+| Edge     | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/apex-log-insights/nkpcmmjdldolekgajklnllilkbobbian) |
+| Firefox  | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/apex-log-insights/)                                           |
+| VS Code  | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=apex-log-insights.apex-log-insights)                 |
 
 The CLI, core library, and MCP server are available through [source builds](docs/user-guides/getting-started.md#build-from-source). Store versions can differ from this repository; check [installation availability](docs/user-guides/getting-started.md#availability) for details.
 
